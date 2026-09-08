@@ -521,12 +521,12 @@ src="https://www.facebook.com/tr?id=1457252082902363&ev=PageView&noscript=1"
 
   <!-- ---------- pseudo modal ---------- -->
   <!-- ---------- Google Forms hidden proxy (keeps the custom UI/modal; no redirect) ---------- -->
-  <iframe name="hidden-submit-frame" style="display:none;" aria-hidden="true" title=""></iframe>
+  <iframe name="hidden-submit-frame" style="display:none;" aria-hidden="true" title="フォーム送信用の非表示フレーム"></iframe>
   <form id="gform-proxy" action="https://docs.google.com/forms/d/e/1FAIpQLSdnMjpCoDwsd4gjBwgpzCEqGPw0SBKWqhOaSx0ZL_3fdaFAXw/formResponse" method="POST" target="hidden-submit-frame" style="display:none;">
     <input type="text" name="entry.50285302" id="gform-email-field">
   </form>
 
-  <div class="modal-overlay" id="modal">
+  <div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-hidden="true">
     <div class="modal-card">
       <svg class="modal-stamp" viewBox="0 0 80 80" aria-hidden="true">
         <circle cx="40" cy="40" r="34" stroke-dasharray="2 3" stroke-width="1.4"/>
@@ -534,7 +534,7 @@ src="https://www.facebook.com/tr?id=1457252082902363&ev=PageView&noscript=1"
         <text x="40" y="37" text-anchor="middle" font-size="7" fill="var(--red)" font-family="Special Elite, monospace">RECEIVED</text>
         <text x="40" y="49" text-anchor="middle" font-size="6" fill="var(--red)" font-family="Special Elite, monospace">2026</text>
       </svg>
-      <h3>事前登録を受け付けました</h3>
+      <h3 id="modal-title">事前登録を受け付けました</h3>
       <p>投函、確かに承りました。<br>リリースのご案内は、しかるべき時にお届けします。<br>それまで、少しだけお待ちください。</p>
       <button class="modal-close" id="modal-close">閉じる</button>
     </div>
@@ -566,11 +566,13 @@ src="https://www.facebook.com/tr?id=1457252082902363&ev=PageView&noscript=1"
 
     function openModal(){
       modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
       closeBtn.focus();
       document.body.style.overflow = 'hidden';
     }
     function closeModal(){
       modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
     }
 
