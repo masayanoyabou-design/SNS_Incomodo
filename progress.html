@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incomodo — 開発ダッシュボード</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #F7F4EB;
+    --paper-alt: #EFE7D6;
+    --surface: #FBF9F2;
+    --ink: #2C2523;
+    --ink-soft: #3E2723;
+    --muted: rgba(44,37,35,0.6);
+    --faint: rgba(44,37,35,0.14);
+    --red: #C0392B;
+    --red-deep: #9C3327;
+    --gold: #B7950B;
+    --green: #6E8F5C;
+    --shadow: 0 14px 32px -20px rgba(44,37,35,0.35);
+
+    /* status palette — fixed, validated (see dataviz skill), not themed to brand */
+    --status-good: #0ca30c;
+    --status-warning: #fab219;
+    --status-critical: #d03b3b;
+    --status-muted: #898781;
+    --track-red: rgba(192,57,43,0.14);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Noto Sans JP","Hiragino Sans",sans-serif;
+    line-height:1.7;
+    padding: 0 0 60px;
+  }
+  h1,h2,h3{ font-family:"Noto Serif JP",serif; color:var(--ink-soft); margin:0; }
+  .wrap{ max-width:1040px; margin:0 auto; padding:0 24px; }
+  a{ color:var(--red); }
+
+  .label{
+    font-family:"Special Elite",monospace;
+    letter-spacing:0.1em; text-transform:uppercase; font-size:0.7rem;
+  }
+
+  /* header */
+  header.top{ padding:40px 0 28px; border-bottom:1px solid var(--faint); margin-bottom:32px; }
+  .top-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; }
+  .top-row h1{ font-size:1.7rem; }
+  .top-sub{ margin-top:6px; font-size:0.86rem; color:var(--muted); }
+  .top-meta{ text-align:right; font-size:0.78rem; color:var(--muted); }
+  .top-meta .label{ color:var(--gold); }
+
+  .ring-wrap{ display:flex; align-items:center; gap:16px; margin-top:20px; }
+  .ring{ width:64px; height:64px; flex-shrink:0; }
+  .ring-track{ fill:none; stroke:var(--faint); stroke-width:6; }
+  .ring-fill{ fill:none; stroke:var(--red); stroke-width:6; stroke-linecap:round; transform:rotate(-90deg); transform-origin:center; transition:stroke-dashoffset 0.4s ease; }
+  .ring-num{ font-family:"Noto Serif JP",serif; font-weight:700; font-size:1.3rem; fill:var(--ink-soft); }
+  .ring-label{ font-size:0.84rem; color:var(--muted); }
+  .ring-label b{ display:block; color:var(--ink-soft); font-size:1rem; font-family:"Noto Serif JP",serif; }
+
+  /* stat tiles */
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:44px; }
+  .stat{
+    background:var(--surface); border:1px solid var(--faint); box-shadow:var(--shadow);
+    padding:16px 18px; position:relative;
+  }
+  .stat .label{ color:var(--muted); }
+  .stat h3{ font-size:1.02rem; margin-top:8px; }
+  .pill{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:0.72rem; font-weight:600; padding:3px 10px; border-radius:999px;
+    margin-top:10px;
+  }
+  .pill::before{ content:""; width:6px; height:6px; border-radius:50%; }
+  .pill.done{ background:rgba(12,163,12,0.12); color:#0a7d0a; }
+  .pill.done::before{ background:var(--status-good); }
+  .pill.progress{ background:rgba(250,178,25,0.18); color:#8a5c00; }
+  .pill.progress::before{ background:var(--status-warning); }
+  .pill.todo{ background:rgba(137,135,129,0.16); color:var(--muted); }
+  .pill.todo::before{ background:var(--status-muted); }
+  .pill.blocked{ background:rgba(208,59,59,0.12); color:var(--status-critical); }
+  .pill.blocked::before{ background:var(--status-critical); }
+
+  /* section heading */
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:8px; }
+  .section-head h2{ font-size:1.3rem; }
+  .section-head .label{ color:var(--red); }
+  section{ margin-bottom:52px; }
+
+  /* charts */
+  .chart-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px; }
+  .chart-card{
+    background:var(--surface); border:1px solid var(--faint); box-shadow:var(--shadow);
+    padding:20px 22px 18px;
+  }
+  .chart-card h3{ font-size:0.98rem; margin-bottom:4px; }
+  .chart-card .chart-sub{ font-size:0.78rem; color:var(--muted); margin-bottom:14px; }
+  .chart-card svg{ display:block; width:100%; height:auto; overflow:visible; }
+  .bar-row-label{ font-family:"Noto Sans JP",sans-serif; font-size:11px; fill:var(--ink-soft); }
+  .bar-value-label{ font-family:"Noto Sans JP",sans-serif; font-size:11px; font-weight:600; fill:var(--ink-soft); }
+  .bar-value-label.inside{ fill:#fff; }
+  .chart-legend{ display:flex; gap:16px; margin-top:14px; flex-wrap:wrap; }
+  .chart-legend-item{ display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--muted); }
+  .chart-legend-swatch{ width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+
+  /* roadmap */
+  .phase-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; }
+  .phase-card{
+    background:var(--surface); border:1px solid var(--faint); box-shadow:var(--shadow);
+    padding:20px 20px 18px;
+  }
+  .phase-card-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+  .phase-card h3{ font-size:1.05rem; }
+  .phase-percent{ font-family:"Special Elite",monospace; font-size:0.78rem; color:var(--gold); }
+  .phase-bar-bg{ height:5px; background:var(--faint); margin:10px 0 16px; overflow:hidden; }
+  .phase-bar-fill{ height:100%; background:var(--red); width:0%; transition:width 0.3s ease; }
+  .task-list{ list-style:none; margin:0; padding:0; }
+  .task-list li{ display:flex; align-items:flex-start; gap:9px; padding:6px 0; font-size:0.86rem; }
+  .task-list input[type="checkbox"]{ margin-top:3px; accent-color:var(--red); cursor:pointer; flex-shrink:0; }
+  .task-list label{ cursor:pointer; }
+  .task-list li.done label{ color:var(--muted); text-decoration:line-through; }
+
+  /* reference-code badges, for pointing at a specific task/issue in instructions */
+  .item-code{
+    font-family:"Special Elite",monospace; font-size:0.68rem; letter-spacing:0.02em;
+    color:var(--gold); background:rgba(183,149,11,0.12);
+    padding:1px 6px; border-radius:3px; flex-shrink:0;
+    white-space:nowrap;
+  }
+  .task-list li.done .item-code{ opacity:0.55; }
+  .issue-body .item-code{ margin-right:7px; }
+
+  /* backlog */
+  .backlog-group{ margin-bottom:22px; }
+  .backlog-group-title{
+    display:flex; align-items:center; gap:8px;
+    font-family:"Special Elite",monospace; font-size:0.76rem; letter-spacing:0.06em;
+    color:var(--muted); margin-bottom:10px;
+  }
+  .backlog-group-title .dot{ width:8px; height:8px; border-radius:50%; }
+  .backlog-group.high .dot{ background:var(--status-critical); }
+  .backlog-group.mid .dot{ background:var(--status-warning); }
+  .backlog-group.low .dot{ background:var(--status-muted); }
+
+  .issue{
+    display:flex; gap:12px; align-items:flex-start;
+    background:var(--surface); border:1px solid var(--faint);
+    padding:13px 16px; margin-bottom:8px;
+  }
+  .issue input[type="checkbox"]{ margin-top:4px; accent-color:var(--red); cursor:pointer; flex-shrink:0; }
+  .issue-body{ flex:1; min-width:0; }
+  .issue-body p{ margin:0; font-size:0.88rem; }
+  .issue-body .why{ margin-top:4px; font-size:0.78rem; color:var(--muted); }
+  .issue.resolved .issue-body p{ text-decoration:line-through; color:var(--muted); }
+  .issue.resolved{ opacity:0.6; }
+  .tag{
+    font-size:0.68rem; font-weight:600; padding:2px 8px; border-radius:999px; flex-shrink:0;
+    white-space:nowrap;
+  }
+  .tag.blocker{ background:rgba(208,59,59,0.12); color:var(--status-critical); }
+  .tag.note{ background:rgba(250,178,25,0.18); color:#8a5c00; }
+  .tag.future{ background:rgba(137,135,129,0.16); color:var(--muted); }
+
+  footer{ text-align:center; padding-top:20px; }
+  #reset-btn{
+    font-family:"Special Elite",monospace; font-size:0.76rem;
+    background:none; border:1px solid var(--faint); color:var(--ink-soft);
+    padding:9px 20px; cursor:pointer;
+  }
+  #reset-btn:hover{ border-color:var(--red); color:var(--red); }
+
+  @media (max-width:600px){
+    .top-row{ flex-direction:column; }
+    .top-meta{ text-align:left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="top-row">
+      <div>
+        <h1>Incomodo 開発ダッシュボード</h1>
+        <p class="top-sub">LP公開からアプリリリースまでのロードマップと、解決すべき課題</p>
+      </div>
+      <div class="top-meta">
+        <span class="label">Last reviewed</span><br>
+        2026-09-06
+      </div>
+    </div>
+    <div class="ring-wrap">
+      <svg class="ring" viewBox="0 0 64 64">
+        <circle class="ring-track" cx="32" cy="32" r="27"/>
+        <circle class="ring-fill" id="ring-fill" cx="32" cy="32" r="27" stroke-dasharray="169.6" stroke-dashoffset="169.6"/>
+        <text class="ring-num" id="ring-num" x="32" y="38" text-anchor="middle">0%</text>
+      </svg>
+      <div class="ring-label">
+        <b id="ring-caption">全タスク未着手</b>
+        ロードマップ全20タスク中の完了率
+      </div>
+    </div>
+  </header>
+
+  <section class="stats">
+    <div class="stat">
+      <span class="label">LP制作</span>
+      <h3>デザイン・実装</h3>
+      <span class="pill done">完了</span>
+    </div>
+    <div class="stat">
+      <span class="label">LP公開</span>
+      <h3>本番URL</h3>
+      <span class="pill done">公開済み</span>
+    </div>
+    <div class="stat">
+      <span class="label">事前登録の受け皿</span>
+      <h3>メール収集方法</h3>
+      <span class="pill done">Googleフォーム連携済み</span>
+    </div>
+    <div class="stat">
+      <span class="label">広告出稿</span>
+      <h3>Meta広告</h3>
+      <span class="pill progress">配信中（2026/09/03〜09/10）</span>
+    </div>
+  </section>
+
+  <section class="charts">
+    <div class="section-head">
+      <div>
+        <span class="label">Progress</span>
+        <h2>グラフで見る進捗</h2>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>フェーズ別 完了率</h3>
+        <p class="chart-sub">各フェーズのタスク完了率</p>
+        <svg id="phase-chart" viewBox="0 0 480 168" role="img" aria-label="フェーズ別の完了率"></svg>
+      </div>
+      <div class="chart-card">
+        <h3>課題の解決状況（優先度別）</h3>
+        <p class="chart-sub">バックログの件数と解決済みの割合</p>
+        <svg id="backlog-chart" viewBox="0 0 480 128" role="img" aria-label="優先度別の課題解決状況"></svg>
+        <div class="chart-legend">
+          <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:var(--status-good)"></span>解決済み</span>
+          <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:var(--status-muted)"></span>未解決</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="roadmap">
+    <div class="section-head">
+      <div>
+        <span class="label">Roadmap</span>
+        <h2>LP公開 → アプリリリース</h2>
+      </div>
+    </div>
+    <div class="phase-grid" id="phase-grid">
+
+      <div class="phase-card" data-phase="1">
+        <div class="phase-card-head"><h3>Phase 1｜LP公開・検証準備</h3><span class="phase-percent">0%</span></div>
+        <div class="phase-bar-bg"><div class="phase-bar-fill"></div></div>
+        <ul class="task-list">
+          <li><input type="checkbox" id="p1-1" checked><label for="p1-1">LPのHTML/CSSコーディング（index.html）</label></li>
+          <li><input type="checkbox" id="p1-2" checked><label for="p1-2">アプリ画面モックアップ作成</label></li>
+          <li><input type="checkbox" id="p1-3" checked><label for="p1-3">事前登録の受け皿を決定・実装</label></li>
+          <li><input type="checkbox" id="p1-4" checked><label for="p1-4">LPを本番URLで公開（Netlify/Vercel）</label></li>
+          <li><input type="checkbox" id="p1-5" checked><label for="p1-5">コンバージョン計測タグを設置</label></li>
+        </ul>
+      </div>
+
+      <div class="phase-card" data-phase="2">
+        <div class="phase-card-head"><h3>Phase 2｜広告で需要検証</h3><span class="phase-percent">0%</span></div>
+        <div class="phase-bar-bg"><div class="phase-bar-fill"></div></div>
+        <ul class="task-list">
+          <li><input type="checkbox" id="p2-1" checked><label for="p2-1">Meta（Instagram）広告アカウント開設</label></li>
+          <li><input type="checkbox" id="p2-2" checked><label for="p2-2">広告用クリエイティブ（画像/動画）準備</label></li>
+          <li><input type="checkbox" id="p2-3" checked><label for="p2-3">少額予算でテスト配信開始</label></li>
+          <li><input type="checkbox" id="p2-4"><label for="p2-4">CPA（獲得単価）の計測・分析</label></li>
+          <li><input type="checkbox" id="p2-5"><label for="p2-5">本格開発に進むかのGo/NoGo判定</label></li>
+        </ul>
+      </div>
+
+      <div class="phase-card" data-phase="3">
+        <div class="phase-card-head"><h3>Phase 3｜MVP開発</h3><span class="phase-percent">0%</span></div>
+        <div class="phase-bar-bg"><div class="phase-bar-fill"></div></div>
+        <ul class="task-list">
+          <li><input type="checkbox" id="p3-1"><label for="p3-1">開発環境構築（Flutter + Firebase）</label></li>
+          <li><input type="checkbox" id="p3-2"><label for="p3-2">ユーザー認証・ポスト登録機能実装</label></li>
+          <li><input type="checkbox" id="p3-3"><label for="p3-3">GPS連動の開封判定ロジック実装</label></li>
+          <li><input type="checkbox" id="p3-4"><label for="p3-4">ボイスメッセージ録音・圧縮・送信機能</label></li>
+          <li><input type="checkbox" id="p3-5"><label for="p3-5">UIのクラフト紙風デザイン適用</label></li>
+        </ul>
+      </div>
+
+      <div class="phase-card" data-phase="4">
+        <div class="phase-card-head"><h3>Phase 4｜βテスト＆リリース</h3><span class="phase-percent">0%</span></div>
+        <div class="phase-bar-bg"><div class="phase-bar-fill"></div></div>
+        <ul class="task-list">
+          <li><input type="checkbox" id="p4-1"><label for="p4-1">身内での実地フィールドテスト</label></li>
+          <li><input type="checkbox" id="p4-2"><label for="p4-2">バグ修正・UI微調整</label></li>
+          <li><input type="checkbox" id="p4-3"><label for="p4-3">事前登録者へのクローズドβ招待</label></li>
+          <li><input type="checkbox" id="p4-4"><label for="p4-4">App Store / Google Play 審査提出</label></li>
+          <li><input type="checkbox" id="p4-5"><label for="p4-5">Incomodo 正式リリース</label></li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="backlog">
+    <div class="section-head">
+      <div>
+        <span class="label">Backlog</span>
+        <h2>解決しなきゃいけない課題</h2>
+      </div>
+    </div>
+
+    <div class="backlog-group high">
+      <div class="backlog-group-title"><span class="dot"></span>優先度：高（広告出稿のブロッカー）</div>
+
+      <div class="issue">
+        <input type="checkbox" id="i1" checked>
+        <div class="issue-body">
+          <p>事前登録フォームが実データを保存しない</p>
+          <p class="why">Googleフォーム（隠しiframe経由）と連携済み。LPの見た目・モーダル演出は変更なし。送信データはGoogleスプレッドシートに蓄積される。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i2" checked>
+        <div class="issue-body">
+          <p>本番公開URLが未確定</p>
+          <p class="why">https://snazzy-parfait-172aba.netlify.app で公開済み。画像・privacy.htmlともにHTTP 200で表示確認済み。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i3" checked>
+        <div class="issue-body">
+          <p>匿名デプロイのclaim（サイトの恒久化）</p>
+          <p class="why">Netlifyアカウントにclaim済み。Public設定に変更し、ログイン・パスワードなしで誰でも閲覧できる状態を確認済み。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i10" checked>
+        <div class="issue-body">
+          <p>プライバシーポリシーが未作成</p>
+          <p class="why">privacy.html作成済み・LPフッターにリンク済み。事業者情報・連絡先も反映済み。残るはCookie/解析ツール名の記載のみ（B4完了後に反映）。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
+      </div>
+    </div>
+
+    <div class="backlog-group mid">
+      <div class="backlog-group-title"><span class="dot"></span>優先度：中（広告運用に必要）</div>
+
+      <div class="issue">
+        <input type="checkbox" id="i4" checked>
+        <div class="issue-body">
+          <p>コンバージョン計測タグ未設置</p>
+          <p class="why">Metaピクセル（ID: 1457252082902363、ビジネスポートフォリオ「incomodo.app」所属）を設置し、フォーム送信時にLeadイベントが発火するよう実装済み。イベントマネージャでPageView・リードの受信を確認済み。プライバシーポリシーにも反映済み。</p>
+        </div>
+        <span class="tag note">要対応</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i5" checked>
+        <div class="issue-body">
+          <p>Meta広告アカウント・支払い方法が未設定</p>
+          <p class="why">ビジネスアカウント作成、Facebookページ／Instagram連携、広告アカウント作成（JPY・東京タイムゾーン）、支払い方法の登録まで完了。</p>
+        </div>
+        <span class="tag note">要対応</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i11" checked>
+        <div class="issue-body">
+          <p>Facebookページ／Instagramビジネスアカウントが未準備</p>
+          <p class="why">Facebookページ「Incomodo」作成済み。Instagramビジネスアカウントも作成し、Facebookページと連携済み。</p>
+        </div>
+        <span class="tag note">要対応</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i6" checked>
+        <div class="issue-body">
+          <p>広告クリエイティブ（画像/動画）が未準備</p>
+          <p class="why">フィード用（1080×1080）・ストーリーズ用（1080×1920）画像と、プライマリテキスト／見出し／説明文を作成済み。`ads/`フォルダに保存。</p>
+        </div>
+        <span class="tag note">要対応</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i7" checked>
+        <div class="issue-body">
+          <p>テスト予算・CPA目標・Go/NoGo基準が未設定</p>
+          <p class="why">予算¥10,000・目標CPA ¥150〜300（想定33〜66件）・期間5〜7日で確定。Go基準：30件以上かつCPA¥300以内 or 明確な反応あり。No-Go基準：CPA¥500超 or 反応薄い。</p>
+        </div>
+        <span class="tag note">要対応</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i17" checked>
+        <div class="issue-body">
+          <p>事前登録者への自動サンクスメール・ヒアリングが未整備</p>
+          <p class="why">Google Apps Scriptでフォーム送信をトリガーに、お礼＋開発背景＋既存SNSへの不満点ヒアリングを行う自動メールを実装済み（署名：後藤雅也）。トリガー設定前の既存登録者8件にも一括送信済み。返信内容は定性的な改善材料としてGo/NoGo判断の補強に使う。</p>
+        </div>
+        <span class="tag note">要対応</span>
+      </div>
+
+    </div>
+
+    <div class="backlog-group low">
+      <div class="backlog-group-title"><span class="dot"></span>優先度：低（将来検討）</div>
+
+      <div class="issue">
+        <input type="checkbox" id="i13">
+        <div class="issue-body">
+          <p>App Store / Google Play 開発者アカウントが未登録</p>
+          <p class="why">Apple $99/年・Google $25と実費がかかるため、需要検証（広告テスト）のGo判定が出るまでは着手しない。Phase3のMVP開発期間に対して登録の審査待ち日数は誤差の範囲なので、急ぐ必要はない。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i8">
+        <div class="issue-body">
+          <p>週末のランダムポスト機能がLPに未反映</p>
+          <p class="why">要件定義書のF-04（ランダムポスト）は、現行LPでは「アプリの中身」ショーケースに置き換わっている。必要なら再検討。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i9">
+        <div class="issue-body">
+          <p>独自ドメインの取得</p>
+          <p class="why">現状はnetlify.app等のサブドメイン想定。本格運用時にincomodo.appのような独自ドメイン取得を検討。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i12">
+        <div class="issue-body">
+          <p>問い合わせ用の連絡先が未整備</p>
+          <p class="why">事前登録者からの問い合わせ窓口、また広告審査時の運営者情報として、メールアドレス等の連絡先が必要になる場合がある。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i14">
+        <div class="issue-body">
+          <p>アプリ名「Incomodo」の重複・商標チェック未実施</p>
+          <p class="why">App Store / Google Playで同名・類似名のアプリがないか、商標的に問題ないかを、ブランディングに本格投資する前に確認しておくべき。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i15">
+        <div class="issue-body">
+          <p>利用規約・コミュニティガイドラインが未作成</p>
+          <p class="why">音声メッセージや写真、位置情報を扱うアプリのため、禁止事項やコンテンツモデレーション方針を含む利用規約が本開発〜βテスト前に必要。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i16">
+        <div class="issue-body">
+          <p>特定商取引法に基づく表記が未作成</p>
+          <p class="why">現在の事前登録は無料だが、切手の課金販売（F-05）を開始する際には表記が必須になる。マネタイズ開始前に準備すればよい。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <button id="reset-btn">進捗をリセット</button>
+  </footer>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const allBoxes = () => Array.from(document.querySelectorAll('input[type="checkbox"]'));
+
+  injectItemCodes();
+
+  allBoxes().forEach(box => {
+    const saved = localStorage.getItem('incomodo_' + box.id);
+    if (saved === 'true') box.checked = true;
+    applyState(box);
+    box.addEventListener('change', () => {
+      localStorage.setItem('incomodo_' + box.id, box.checked);
+      applyState(box);
+      updateAll();
+    });
+  });
+
+  function injectItemCodes() {
+    // roadmap tasks: id "p1-1" -> badge "P1-1"
+    document.querySelectorAll('.task-list li').forEach(li => {
+      const box = li.querySelector('input[type="checkbox"]');
+      const label = li.querySelector('label');
+      if (!box || !label) return;
+      const code = document.createElement('span');
+      code.className = 'item-code';
+      code.textContent = box.id.toUpperCase();
+      li.insertBefore(code, label);
+    });
+    // backlog issues: id "i1" -> badge "B1"
+    document.querySelectorAll('.issue').forEach(issue => {
+      const box = issue.querySelector('input[type="checkbox"]');
+      const title = issue.querySelector('.issue-body p');
+      if (!box || !title) return;
+      const code = document.createElement('span');
+      code.className = 'item-code';
+      code.textContent = 'B' + box.id.replace('i', '');
+      title.insertBefore(code, title.firstChild);
+    });
+  }
+
+  function applyState(box) {
+    const li = box.closest('li');
+    if (li) li.classList.toggle('done', box.checked);
+    const issue = box.closest('.issue');
+    if (issue) issue.classList.toggle('resolved', box.checked);
+  }
+
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  function renderPhaseChart() {
+    const svg = document.getElementById('phase-chart');
+    svg.innerHTML = '';
+    const labelW = 68, trackX = 78, trackW = 350, barH = 16, rowH = 42;
+    document.querySelectorAll('.phase-card').forEach((card, i) => {
+      const boxes = card.querySelectorAll('input[type="checkbox"]');
+      const checked = card.querySelectorAll('input[type="checkbox"]:checked');
+      const pct = boxes.length ? Math.round((checked.length / boxes.length) * 100) : 0;
+      const y = i * rowH + 8;
+      const fillW = Math.max(pct > 0 ? 8 : 0, trackW * pct / 100);
+
+      svg.appendChild(svgEl('text', { x: 0, y: y + barH - 3, class: 'bar-row-label' })).textContent = 'Phase ' + (i + 1);
+      svg.appendChild(svgEl('rect', { x: trackX, y: y, width: trackW, height: barH, rx: 4, fill: 'rgba(192,57,43,0.14)' }));
+      if (fillW > 0) {
+        svg.appendChild(svgEl('rect', { x: trackX, y: y, width: fillW, height: barH, rx: 4, fill: '#C0392B' }));
+      }
+      svg.appendChild(svgEl('text', { x: trackX + fillW + 8, y: y + barH - 3, class: 'bar-value-label' })).textContent = pct + '%';
+    });
+  }
+
+  function renderBacklogChart() {
+    const svg = document.getElementById('backlog-chart');
+    svg.innerHTML = '';
+    const labelW = 68, trackX = 78, trackMaxW = 320, barH = 16, rowH = 38, gap = 2;
+    const groups = [
+      { sel: '.backlog-group.high', label: '優先度：高' },
+      { sel: '.backlog-group.mid', label: '優先度：中' },
+      { sel: '.backlog-group.low', label: '優先度：低' }
+    ];
+    const counts = groups.map(g => {
+      const boxes = document.querySelectorAll(g.sel + ' input[type="checkbox"]');
+      const resolved = document.querySelectorAll(g.sel + ' input[type="checkbox"]:checked');
+      return { total: boxes.length, resolved: resolved.length };
+    });
+    const maxTotal = Math.max(1, ...counts.map(c => c.total));
+
+    groups.forEach((g, i) => {
+      const { total, resolved } = counts[i];
+      const open = total - resolved;
+      const y = i * rowH + 6;
+      const barW = trackMaxW * (total / maxTotal);
+      const resolvedW = total ? (barW - gap) * (resolved / total) : 0;
+      const openW = total ? (barW - gap) * (open / total) : 0;
+
+      svg.appendChild(svgEl('text', { x: 0, y: y + barH - 3, class: 'bar-row-label' })).textContent = g.label;
+
+      if (resolved > 0) {
+        svg.appendChild(svgEl('rect', { x: trackX, y: y, width: Math.max(resolvedW, 4), height: barH, rx: 4, fill: '#0ca30c' }));
+      }
+      if (open > 0) {
+        const openX = trackX + (resolved > 0 ? resolvedW + gap : 0);
+        svg.appendChild(svgEl('rect', { x: openX, y: y, width: Math.max(openW, 4), height: barH, rx: 4, fill: '#898781' }));
+      }
+      if (total === 0) {
+        svg.appendChild(svgEl('rect', { x: trackX, y: y, width: 8, height: barH, rx: 4, fill: 'rgba(192,57,43,0.14)' }));
+      }
+      svg.appendChild(svgEl('text', { x: trackX + Math.max(barW, 8) + 8, y: y + barH - 3, class: 'bar-value-label' })).textContent = resolved + ' / ' + total;
+    });
+  }
+
+  function updateAll() {
+    // per-phase
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const boxes = card.querySelectorAll('input[type="checkbox"]');
+      const checked = card.querySelectorAll('input[type="checkbox"]:checked');
+      const pct = Math.round((checked.length / boxes.length) * 100);
+      card.querySelector('.phase-percent').textContent = pct + '%';
+      card.querySelector('.phase-bar-fill').style.width = pct + '%';
+    });
+
+    // overall (roadmap tasks only, phases 1-4)
+    const roadmapBoxes = document.querySelectorAll('.phase-card input[type="checkbox"]');
+    const roadmapChecked = document.querySelectorAll('.phase-card input[type="checkbox"]:checked');
+    const total = roadmapBoxes.length;
+    const done = roadmapChecked.length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+
+    const circumference = 169.6;
+    const offset = circumference - (circumference * pct / 100);
+    document.getElementById('ring-fill').style.strokeDashoffset = offset;
+    document.getElementById('ring-num').textContent = pct + '%';
+
+    const caption = document.getElementById('ring-caption');
+    if (pct === 0) caption.textContent = '全タスク未着手';
+    else if (pct === 100) caption.textContent = 'ロードマップ完了！';
+    else caption.textContent = done + ' / ' + total + ' タスク完了';
+
+    renderPhaseChart();
+    renderBacklogChart();
+  }
+
+  updateAll();
+
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    if (confirm('進捗をすべてリセットしますか？')) {
+      allBoxes().forEach(box => {
+        localStorage.removeItem('incomodo_' + box.id);
+      });
+      location.reload();
+    }
+  });
+});
+</script>
+</body>
+</html>
