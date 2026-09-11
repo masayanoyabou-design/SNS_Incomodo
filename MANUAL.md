@@ -24,6 +24,10 @@
 | 需要検証の予算 | ¥10,000 |
 | 目標CPA | ¥150〜300（想定登録33〜66件） |
 | 需要検証の実績 | ¥10,000で37件登録・CPA約¥270（2026/09/03〜09/10配信） → **Go判定**（詳細は9章） |
+| Flutter SDK | 3.47.3（`C:\dev\flutter`、OneDrive同期対象外） |
+| Android SDK | `C:\dev\android-sdk`（同期対象外）。Platform 36・Build-Tools 36.1.0 |
+| Firebaseプロジェクト用アカウント | incomodo.app@gmail.com（作成方針決定済み、プロジェクト自体は未作成） |
+| Flutterアプリのパッケージ/バンドルID | `app.incomodo.incomodo` |
 
 ---
 
@@ -364,9 +368,71 @@ LP自体とは別に、Instagram/Facebookのフィード・ストーリーズに
 
 ---
 
+## 10. 開発環境の方針（Windows中心・iOS対応方法）
+
+### 目的
+Phase3のMVP開発を始めるにあたり、開発機（Windows PC）とターゲットOS（iOS想定）のギャップをどう埋めるかを事前に決めておく。
+
+### 前提となる制約
+- 開発機はWindows。iOSアプリのビルドにはXcode（macOS専用）が必須で、Windows単体ではiOSシミュレータ実行・実機ビルド・App Store提出ができない
+- 一方、Android開発（Flutter + Android Studio/エミュレータ）はWindows上で完結する
+
+### 検討した選択肢
+| 選択肢 | メリット | デメリット |
+|---|---|---|
+| Macを購入 | ローカルで両OSとも高速に開発・実機テストできる（ホットリロード可） | 初期投資が発生（Mac mini新品で10万円前後〜） |
+| クラウドMacビルド（Codemagic等） | 初期投資ゼロ、Macを一切用意せずiOSビルド〜TestFlight配信まで可能 | push→ビルド待ち（10〜15分程度）が発生し、開発速度は劣る |
+
+Codemagicの料金を試算した結果、節目ごとのビルド運用（週1回程度〜多くて毎日）であれば月間無料枠（500分/月、macOS M2）内に収まる見込みで、実質無料〜数ドル程度の負担で運用可能と判断した。
+
+### 決定内容
+- **日常の開発・デバッグはWindows上でAndroidを対象に行う**（Flutter + Android Studio、ホットリロードで高速反復）
+- **iOS対応はCodemagicによるクラウドビルドで対応**し、機能がまとまった節目ごとにビルド → TestFlightで実機（iPhone）確認する運用とする
+- Macの購入は見送り、開発量が増えて「クラウドビルドでは遅くて辛い」となった時点で改めて検討する
+- Apple Developer Program（年$99）は、iOSでのTestFlight配信・提出が必要になるタイミング（Phase3後半〜Phase4）で登録すればよい。Google Play Console（$25）は先に必要になる
+
+### 判断の理由
+- 現時点ではMVPがまだ存在せず、頻繁なiOS実機デバッグが必要な段階ではない。まずAndroidで機能を作り切ることを優先し、iOSは定期的な健康診断（ビルドが通るか・TestFlightで動くか）で足りる
+- 初期投資を抑えつつiOSリリースの道筋（Codemagic経由）は確保できるため、副業として無理のない範囲で進められる
+
+### 補足：言語選定（Flutter/Dart vs React Native/TypeScript）
+開発言語としてTypeScript（React Native/Expo）も比較検討したが、最終的に**Flutter/Dartを採用**（2026-09-10確定）。理由：実際のコード実装はAIが担当するため言語自体の馴染みやすさより、Incomodoの世界観（クラフト紙・凝った演出）をどこまで作り込めるかを優先した。FlutterはUIを自前描画するため、Android/iOSで見た目が完全に一致しやすい点を評価した。なおどちらの選択でもMacなしでのiOSクラウドビルド（Flutter→Codemagic／React Native→Expo EAS Build）は可能で、この観点での優劣はなかった。
+
+---
+
+## 11. 開発環境構築・Flutterプロジェクト作成（P3-1）
+
+### 目的
+Windows PC上でAndroid向けのFlutter開発ができる状態を整え、実際にビルドが通ることを確認する。
+
+### やったこと・再現手順
+1. Flutter SDK 3.47.3をダウンロードし、`C:\dev\flutter`に展開（OneDriveの同期対象外にするため、プロジェクトフォルダの外に配置）
+2. Android Studioをインストール（`C:\Program Files\Android\Android Studio`）。インストーラーのサイレントインストール（`/S`オプション）は失敗したため、GUIウィザードを手動でクリックして進めた
+3. Android SDK Command-line Toolsを別途ダウンロードし、`C:\dev\android-sdk`に配置（Android Studio本体には実SDKが同梱されていないため）
+4. `sdkmanager`でライセンスに同意し、`platform-tools`・`platforms;android-36`・`build-tools;36.1.0`・`emulator`・`system-images;android-36;google_apis;x86_64`をインストール
+5. `avdmanager`で仮想デバイス「Incomodo_Test」（Pixel 7・Android 16）を作成
+6. 環境変数`ANDROID_HOME`・`ANDROID_SDK_ROOT`・`JAVA_HOME`（Android Studio同梱のJBR JDKを指定）をユーザー環境変数として永続設定し、`flutter\bin`・SDKの各toolディレクトリをPATHに追加
+7. `flutter doctor`で全項目クリアを確認（Windowsデスクトップアプリ開発用のVisual Studio警告のみ残るが、Incomodoには不要なため無視）
+8. リポジトリ内`app/`フォルダに `flutter create --org app.incomodo --project-name incomodo --platforms=android,ios app` でプロジェクトを新規作成
+9. `flutter build apk --debug`で実際にビルドが通ることを検証（初回はGradle・NDK等の追加ダウンロードが発生し、ビルドに約8分かかった）
+
+### ハマりどころ・注意点（コードを触るAI向け）
+- **Android Studioインストーラーは無人インストール（`/S`）に対応していない**。GUIウィザードの手動クリックが必要
+- **Android StudioにAndroid SDK本体は同梱されていない**。別途Command-line Toolsをダウンロードし、`sdkmanager`でコンポーネントを揃える必要がある
+- **`sdkmanager --licenses`へのY入力は、PowerShellのパイプ（`"y" | sdkmanager`）だとうまく渡らないことがある**。`cmd /c "sdkmanager --licenses < yesfile.txt"`のように、ファイル経由でcmd.exeのリダイレクトを使うと確実
+- **SDK・Flutter本体はOneDrive同期フォルダの外（`C:\dev`）に置く**。大量の小さいファイルで構成されるため、同期対象にすると動作が重くなる・同期エラーの原因になりうる。一方、アプリのソースコード自体（`app/`フォルダ）はリポジトリ内（OneDrive同期下）で問題ない
+
+### 得られた成果物
+- 動作確認済みのFlutter開発環境（Android向け）
+- `app/`フォルダ内のFlutterプロジェクト雛形（パッケージID: `app.incomodo.incomodo`）
+- ビルド済みの `app-debug.apk`（動作確認用、リポジトリには含めない）
+
+---
+
 ## 今後の作業予定（未着手のバックログ、詳細は progress.html 参照）
 
-**2026/09/10、需要検証がGo判定となり、Phase 3（MVP開発）着手の段階に入った**（9章参照）。
+**2026/09/12、P3-1（開発環境構築）が完了した**（11章参照）。次はP3-2（ユーザー認証・ポスト登録機能実装）に向けて、Firebaseプロジェクトの作成から着手する。
 
-- 次のタスクはP3-1（開発環境構築：Flutter + Firebase）から
+- Firebaseプロジェクトは`incomodo.app@gmail.com`アカウントで作成する方針（10章参照）。Google側のログインが必要なため、作成作業はユーザー自身の操作が必要
+- iOS向けのCodemagicセットアップは、Android版がある程度動くようになった節目で着手する
 - B13（開発者アカウント登録）・B14〜B16（商標チェック、利用規約、特定商取引法表記）は、Phase3の間に必要なタイミングで着手する方針（実費が発生する／マネタイズ開始前に対応すればよいものが中心のため、優先度は引き続き中〜低）
