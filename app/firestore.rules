@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // A user's mailboxes (PRD F-01). Fixed slot IDs cap each user at four,
+    // with exactly one home. Construction timing is server-enforced so a
+    // client can't skip the 48-hour wait by sending a backdated timestamp.
+    match /users/{uid}/posts/{slot} {
+
+      function validSlot() {
+        return slot in ['home', 'slot1', 'slot2', 'slot3'];
+      }
+
+      function validShape() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['name', 'latitude', 'longitude', 'constructionStartedAt'])
+          && d.keys().hasAll(['name', 'latitude', 'longitude', 'constructionStartedAt'])
+          && d.name is string && d.name.size() > 0 && d.name.size() <= 20
+          && d.latitude is number && d.latitude >= -90 && d.latitude <= 90
+          && d.longitude is number && d.longitude >= -180 && d.longitude <= 180
+          && d.constructionStartedAt is timestamp;
+      }
+
+      function moved() {
+        return request.resource.data.latitude != resource.data.latitude
+          || request.resource.data.longitude != resource.data.longitude;
+      }
+
+      allow read, delete: if signedInAs(uid);
+
+      allow create: if signedInAs(uid) && validSlot() && validShape()
+        && request.resource.data.constructionStartedAt == request.time;
+
+      allow update: if signedInAs(uid) && validShape()
+        && (moved()
+          ? request.resource.data.constructionStartedAt == request.time
+          : request.resource.data.constructionStartedAt == resource.data.constructionStartedAt);
+    }
+  }
+}
