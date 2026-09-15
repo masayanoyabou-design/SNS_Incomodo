@@ -26,8 +26,9 @@
 | 需要検証の実績 | ¥10,000で37件登録・CPA約¥270（2026/09/03〜09/10配信） → **Go判定**（詳細は9章） |
 | Flutter SDK | 3.47.3（`C:\dev\flutter`、OneDrive同期対象外） |
 | Android SDK | `C:\dev\android-sdk`（同期対象外）。Platform 36・Build-Tools 36.1.0 |
-| Firebaseプロジェクト用アカウント | incomodo.app@gmail.com（作成方針決定済み、プロジェクト自体は未作成） |
-| Flutterアプリのパッケージ/バンドルID | `app.incomodo.incomodo` |
+| Firebaseプロジェクト用アカウント | incomodo.app@gmail.com |
+| Firebaseプロジェクト | `incomodo-c161e`（表示名: Incomodo） |
+| Flutterアプリのパッケージ/バンドルID | `app.incomodo.incomodo`（Android/iOS共通、Firebaseにも同IDで登録済み） |
 
 ---
 
@@ -429,10 +430,38 @@ Windows PC上でAndroid向けのFlutter開発ができる状態を整え、実�
 
 ---
 
+## 12. Firebaseプロジェクト作成・Flutterアプリとの接続
+
+### 目的
+P3-2（ユーザー認証・ポスト登録機能）以降で使うFirebase（Authentication・Firestore・Storage）の土台を用意する。
+
+### やったこと・再現手順
+1. https://console.firebase.google.com で`incomodo.app@gmail.com`にログインし、プロジェクト「Incomodo」を作成（プロジェクトID: `incomodo-c161e`、Google Analytics連携は任意でどちらでもよい）
+2. Firebase CLIをNode.js無しで導入するため、スタンドアロンバイナリ（`firebase-tools-win.exe`）をダウンロードし`C:\dev\firebase.exe`として配置
+3. `firebase login`でGoogleアカウント認証。ブラウザが自動起動しない環境だったため、表示されたURLを手動で開き、認証コードを`firebase login <コード>`に渡す方式で完了
+4. `dart pub global activate flutterfire_cli` でFlutterFire CLIを導入
+5. `flutterfire configure --project=incomodo-c161e --platforms=android,ios --android-package-name=app.incomodo.incomodo --ios-bundle-id=app.incomodo.incomodo` を実行し、Firebase上にAndroid/iOSアプリを登録。`app/lib/firebase_options.dart`が自動生成される
+6. `flutter pub add firebase_core` でパッケージを追加し、`app/lib/main.dart`の`main()`で`Firebase.initializeApp()`を呼ぶよう変更
+7. `flutter build apk --debug` でFirebase連携込みのビルドが通ることを確認
+
+### ハマりどころ・注意点（コードを触るAI向け）
+- **`flutterfire`コマンドはWindowsでは`.bat`ファイル**。bash環境から素の`flutterfire`という名前では見つからないことがあるため、フルパス（`flutterfire.bat`）で呼ぶか、PATHが正しく通っているか確認する
+- **FlutterFire CLIは内部で`firebase`コマンドをPATH経由で呼び出す**。`firebase.exe`を独自の場所（`C:\dev`）に置いた場合、そのフォルダをPATHに追加しておかないと「Found 0 Firebase projects」と誤判定され、新規プロジェクト作成の対話プロンプトが出て停止してしまう
+- **`flutter build`が`Unable to delete directory`エラーで失敗する場合、犯人はOneDriveとは限らない**。今回は(a) `app/build`をOneDrive同期対象外にジャンクションで逃がす、(b) 前回ビルドの残骸のGradleデーモン（`java.exe`プロセス）を`taskkill`で終了する、の両方が必要だった。ビルド失敗時はまずこの2点を疑うとよい
+- **`app/build`は物理的に`C:\dev\build-cache\incomodo-app-build`に存在し、`app/build`はそこへのNTFSジャンクション**。フォルダの中身を直接見たい場合はどちらのパスからでも同じ内容が見える
+
+### 得られた成果物
+- Firebaseプロジェクト「Incomodo」（`incomodo-c161e`）、Android/iOSアプリ登録済み
+- `app/lib/firebase_options.dart`（自動生成、コミット対象）
+- Firebase初期化コード込みでビルド確認済みの状態
+
+---
+
 ## 今後の作業予定（未着手のバックログ、詳細は progress.html 参照）
 
-**2026/09/12、P3-1（開発環境構築）が完了した**（11章参照）。次はP3-2（ユーザー認証・ポスト登録機能実装）に向けて、Firebaseプロジェクトの作成から着手する。
+**2026/09/15、Firebaseプロジェクトの作成とFlutterアプリとの接続が完了した**（12章参照）。次はP3-2（ユーザー認証・ポスト登録機能実装）の本体の実装に進む。
 
-- Firebaseプロジェクトは`incomodo.app@gmail.com`アカウントで作成する方針（10章参照）。Google側のログインが必要なため、作成作業はユーザー自身の操作が必要
+- Firebase Authenticationを有効化し、ログイン機能を実装する
+- Firestoreでユーザー・ポスト（最大4箇所、48時間の工事期間ロジック）のデータモデルを設計する
 - iOS向けのCodemagicセットアップは、Android版がある程度動くようになった節目で着手する
 - B13（開発者アカウント登録）・B14〜B16（商標チェック、利用規約、特定商取引法表記）は、Phase3の間に必要なタイミングで着手する方針（実費が発生する／マネタイズ開始前に対応すればよいものが中心のため、優先度は引き続き中〜低）

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "227856433742",
+    "project_id": "incomodo-c161e",
+    "storage_bucket": "incomodo-c161e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:227856433742:android:6ed114cb0c172e5b12391f",
+        "android_client_info": {
+          "package_name": "app.incomodo.incomodo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCh6TIOXmcQNdvble0DS-PmZDrjME5QdAs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
