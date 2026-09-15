@@ -203,7 +203,7 @@
       </svg>
       <div class="ring-label">
         <b id="ring-caption">全タスク未着手</b>
-        ロードマップ全20タスク中の完了率
+        ロードマップ全21タスク中の完了率
       </div>
     </div>
   </header>
@@ -228,6 +228,11 @@
       <span class="label">広告出稿</span>
       <h3>Meta広告</h3>
       <span class="pill done">配信終了・Go判定（37件／CPA¥270）</span>
+    </div>
+    <div class="stat">
+      <span class="label">アプリ開発</span>
+      <h3>Flutter + Firebase</h3>
+      <span class="pill progress">Googleログインまで完了</span>
     </div>
   </section>
 
@@ -294,7 +299,8 @@
         <div class="phase-bar-bg"><div class="phase-bar-fill"></div></div>
         <ul class="task-list">
           <li><input type="checkbox" id="p3-1" checked><label for="p3-1">開発環境構築（Flutter + Firebase）</label></li>
-          <li><input type="checkbox" id="p3-2"><label for="p3-2">ユーザー認証・ポスト登録機能実装</label></li>
+          <li><input type="checkbox" id="p3-2" checked><label for="p3-2">ユーザー認証（Googleログイン）</label></li>
+          <li><input type="checkbox" id="p3-2b"><label for="p3-2b">ポスト登録機能（最大4箇所・48時間の工事期間）</label></li>
           <li><input type="checkbox" id="p3-3"><label for="p3-3">GPS連動の開封判定ロジック実装</label></li>
           <li><input type="checkbox" id="p3-4"><label for="p3-4">ボイスメッセージ録音・圧縮・送信機能</label></li>
           <li><input type="checkbox" id="p3-5"><label for="p3-5">UIのクラフト紙風デザイン適用</label></li>
@@ -359,6 +365,37 @@
         <div class="issue-body">
           <p>プライバシーポリシーが未作成</p>
           <p class="why">privacy.html作成済み・LPフッターにリンク済み。事業者情報・連絡先も反映済み。残るはCookie/解析ツール名の記載のみ（B4完了後に反映）。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
+      </div>
+    </div>
+
+    <div class="backlog-group high">
+      <div class="backlog-group-title"><span class="dot"></span>優先度：高（アプリ公開前に必須）</div>
+
+      <div class="issue">
+        <input type="checkbox" id="i18">
+        <div class="issue-body">
+          <p>Firestoreのセキュリティルールが未設定</p>
+          <p class="why">実データを保存し始める前に必須。未設定のままだと、他人のポストや手紙を読み書きできてしまう。ポスト登録機能（P3-2B）と同時に設定する。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i19">
+        <div class="issue-body">
+          <p>Googleログインの同意画面の表記・リンクが未整備</p>
+          <p class="why">ログイン時の同意画面でアプリ名が小文字の「incomodo」になっており、プライバシーポリシー・利用規約のリンクも未設定。Google Cloudの同意画面設定で「Incomodo」表記に直し、privacy.htmlを紐付ける（利用規約はB15で作成）。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i20">
+        <div class="issue-body">
+          <p>Sign in with Appleが未実装</p>
+          <p class="why">App Storeの審査上、Googleログインを提供するなら原則必須。Xcode側の設定とApple Developer Program（年$99、B13）が必要なため、iOS対応（Codemagic）に着手するタイミングで実装する。</p>
         </div>
         <span class="tag blocker">Blocker</span>
       </div>

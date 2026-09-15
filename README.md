@@ -1,6 +1,6 @@
-# Incomodo（インコモード）— 事前登録LP
+# Incomodo（インコモード）
 
-「行かなきゃ、読めない。」あえて不便さを楽しむ、位置情報連動型スローコミュニケーションSNS「Incomodo」の、広告検証（スモークテスト）用ランディングページです。
+「行かなきゃ、読めない。」あえて不便さを楽しむ、位置情報連動型スローコミュニケーションSNS「Incomodo」のリポジトリです。広告検証（スモークテスト）用のランディングページと、スマホアプリ本体（開発中）を含みます。
 
 **公開URL：** https://snazzy-parfait-172aba.netlify.app
 
@@ -15,6 +15,8 @@ SNS_Incomodo/
 ├── incomodo-lp-deploy.zip    Netlify Drop等にそのままアップロードできるデプロイ用ZIP
 ├── assets/                   index.htmlが参照する画像（アプリ画面モックアップ3枚）
 ├── ads/                      Meta広告用クリエイティブ（フィード用・ストーリーズ用）
+├── app/                      スマホアプリ本体（Flutter + Firebase、開発中）
+│   └── lib/                  アプリのコード（services/・providers/・screens/ に分離）
 └── docs/                     元の仕様書
     ├── 要件定義.md
     └── LP作成用プロンプト.md
@@ -38,13 +40,20 @@ SNS_Incomodo/
 
 `progress.html` を開くと、LP公開からアプリリリースまでのロードマップと、解決すべき課題（バックログ）を確認できます。チェック状態はブラウザのlocalStorageに保存されます。
 
-- ロードマップの各タスクには `P1-1`〜`P4-5` の参照番号
-- バックログの各課題には `B1`〜`B17` の参照番号
+- ロードマップの各タスクには `P1-1`〜`P4-5` の参照番号（途中で分割したタスクは `P3-2B` のように末尾に英字）
+- バックログの各課題には `B1`〜`B20` の参照番号
 
 が付いているので、「P2-3が終わった」のように番号で指示できます。
 
 ## 技術スタック
 
+**LP（index.html など）**
 - 単一HTMLファイル（Tailwind等のビルド不要、外部ライブラリ依存なし）
 - フォント: Google Fonts（Noto Serif JP / Noto Sans JP / Special Elite）
 - レスポンシブ対応（モバイルファースト）
+
+**アプリ（app/）**
+- Flutter（Dart）で Android / iOS を1つのコードから開発
+- Firebase（Authentication・Firestore・Storage）
+- 状態管理: Riverpod（見た目とロジックを分離し、UIを後から差し替えやすくするため）
+- 開発環境の構築手順・ハマりどころは `MANUAL.md` の10〜13章を参照
