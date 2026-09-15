@@ -29,6 +29,8 @@
 | Firebaseプロジェクト用アカウント | incomodo.app@gmail.com |
 | Firebaseプロジェクト | `incomodo-c161e`（表示名: Incomodo） |
 | Flutterアプリのパッケージ/バンドルID | `app.incomodo.incomodo`（Android/iOS共通、Firebaseにも同IDで登録済み） |
+| Googleログイン用 Web クライアントID | `227856433742-ou8hlre73l6209895a5vkkjqltcc2rq7.apps.googleusercontent.com`（`auth_service.dart`の`serverClientId`） |
+| テスト用エミュレータ | `Incomodo_Play`（Pixel 7・Android 16・Play Store入り、Googleアカウント追加済み） |
 
 ---
 
@@ -457,11 +459,57 @@ P3-2（ユーザー認証・ポスト登録機能）以降で使うFirebase（Au
 
 ---
 
+## 13. アプリの設計方針とGoogleログインの実装（P3-2前半）
+
+### 目的
+ユーザー認証（ログイン）を実装する。あわせて、後からUIを差し替えやすいコード構成の土台を作る。
+
+### 決定内容と理由
+- **ログイン方式：Apple/Googleソーシャルログインの両対応**。App Storeの審査要件上、他社ソーシャルログインを提供する場合はSign in with Appleも原則必須のため。ただし実装順は**Google→Apple**。Apple Sign-InはXcode側の設定とApple Developer Program（年$99）登録が必要なため、iOS対応（Codemagic）に着手するタイミングで追加する
+- **UIとロジックの分離（Riverpodで状態管理）**。PRDにUIデザイン要件が独立して存在し、P3-5で後からクラフト紙デザインを当てることが確定しているため。これにより見た目の刷新時にロジックへ触れずに済む。ただし新機能の追加コスト自体がゼロになるわけではない（壊さずに積み増せる、という効果）
+
+### コード構成（`app/lib/`）
+| フォルダ | 役割 | 変更頻度 |
+|---|---|---|
+| `services/` | Firebase・Googleログインとのやり取りだけを担当（`auth_service.dart`） | ほぼ変わらない |
+| `providers/` | Riverpodの状態定義（`auth_provider.dart`：ログイン状態など） | ほぼ変わらない |
+| `screens/` `widgets/` | 画面の見た目（`login_screen.dart`・`home_screen.dart`） | **P3-5で差し替え** |
+| `models/` `theme/` | データの型・デザイントークン（現在は空、今後使用） | — |
+
+`main.dart`の`AuthGate`がログイン状態を監視し、未ログインならログイン画面、ログイン済みならホーム画面を出し分ける。
+
+### やったこと・再現手順
+1. `flutter pub add flutter_riverpod google_sign_in firebase_auth cloud_firestore firebase_storage`
+2. デバッグ用署名鍵のSHA-1を取得し（`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android`）、`firebase apps:android:sha:create`でFirebaseに登録
+3. Firebaseコンソール → Authentication → Sign-in method で**Google**を有効化（公開名は「Incomodo」、サポートメールは`incomodo.app@gmail.com`、Web SDK構成は触らない）
+4. **Google有効化の後で**`google-services.json`を再取得（`firebase apps:sdkconfig ANDROID <appId> -o ...`）
+5. `auth_service.dart`で`GoogleSignIn.instance.initialize(serverClientId: <Web用クライアントID>)`→`authenticate()`→取得した`idToken`でFirebaseにサインイン
+6. エミュレータ（Play Store入りイメージ）にGoogleアカウントを追加し、ログイン→「ようこそ、Incomodo公式さん」まで到達することを確認
+
+### ハマりどころ・注意点（コードを触るAI向け）
+- **`google_sign_in` v7以降はAPIが大きく変わった**。`GoogleSignIn.instance`（シングルトン）で`initialize()`→`authenticate()`の順。旧来の`GoogleSignIn().signIn()`は使えない。トークンは`account.authentication.idToken`で取得（accessTokenは含まれない）
+- **Androidでは`serverClientId`の指定が必須**（未指定だと`clientConfigurationError: serverClientId must be provided on Android`）。値は`google-services.json`内の`client_type: 3`（Web用）のクライアントID。Androidなのに「Web用」のIDを使う点が紛らわしい
+- **`google-services.json`は、Firebase側でGoogleログインを有効化した「後」に取得し直すこと**。有効化前に取得すると`oauth_client`が空で、Web用クライアントIDが入っていない
+- **エミュレータは`google_apis_playstore`（Play Store入り）のシステムイメージが必要**。`google_apis`（Play Storeなし）では、新しいログイン方式（Credential Manager）に必要なモジュール`identity_credentials_platform`が無効化されており、ログインが「Checking info...」で止まる。仮想デバイスは「Incomodo_Play」を使う（旧「Incomodo_Test」はGoogleログイン不可）
+- **エミュレータを一度終了すると、中断したセッションがスナップショットから復元され失敗しがち**。不調時は`emulator -avd Incomodo_Play -no-snapshot-load`でコールドブートする
+- **このPC（メモリ8GB）では、エミュレータ起動直後に「System UI isn't responding」が出やすい**。「Wait」を押して1分ほど待てば落ち着く
+- **エミュレータの操作・画面確認はAIがadb経由で行える**（`adb shell input tap X Y`、`adb exec-out screencap -p > file.png`で撮った画像をAIが読む）。人間の手作業が必要なのは、エミュレータへのGoogleアカウント追加（パスワード入力）の初回1回のみ
+
+### 得られた成果物
+- Googleログインが端から端まで動作するアプリ（ログイン→ホーム画面→ログアウト）
+- UIとロジックを分離したコード構成の土台
+
+### 残課題（リリース前に対応）
+- **OAuth同意画面の整備**：ログイン時の同意画面でアプリ名が小文字の「incomodo」になっており、プライバシーポリシー・利用規約のリンクも未設定。Google Cloudコンソールの同意画面設定で、表記を「Incomodo」に直し`privacy.html`を紐付ける必要がある（利用規約はB15で作成予定）
+
+---
+
 ## 今後の作業予定（未着手のバックログ、詳細は progress.html 参照）
 
-**2026/09/15、Firebaseプロジェクトの作成とFlutterアプリとの接続が完了した**（12章参照）。次はP3-2（ユーザー認証・ポスト登録機能実装）の本体の実装に進む。
+**2026/09/16、Googleログインが完成した**（13章参照）。次はP3-2の後半、ポスト登録機能（Firestore）に進む。
 
-- Firebase Authenticationを有効化し、ログイン機能を実装する
-- Firestoreでユーザー・ポスト（最大4箇所、48時間の工事期間ロジック）のデータモデルを設計する
+- Firestoreでユーザー・ポスト（最大4箇所、48時間の工事期間ロジック）を実装する。業務ルールは自動テストで検証する
+- Firestoreのセキュリティルールを設定する（実データを保存し始める前に必須）
+- Apple Sign-Inは、iOS対応（Codemagic）に着手するタイミングで追加する
 - iOS向けのCodemagicセットアップは、Android版がある程度動くようになった節目で着手する
 - B13（開発者アカウント登録）・B14〜B16（商標チェック、利用規約、特定商取引法表記）は、Phase3の間に必要なタイミングで着手する方針（実費が発生する／マネタイズ開始前に対応すればよいものが中心のため、優先度は引き続き中〜低）

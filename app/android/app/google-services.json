@@ -12,7 +12,20 @@
           "package_name": "app.incomodo.incomodo"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "227856433742-hihm4dtdv38iem5urm4sb4uh3b8n5adm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.incomodo.incomodo",
+            "certificate_hash": "edc5a42719959cb4bb2db81699ce755c270fc2bb"
+          }
+        },
+        {
+          "client_id": "227856433742-ou8hlre73l6209895a5vkkjqltcc2rq7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCh6TIOXmcQNdvble0DS-PmZDrjME5QdAs"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "227856433742-ou8hlre73l6209895a5vkkjqltcc2rq7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "227856433742-v64pt1oeiu36a0cb8sdrlnh7n2hd90cn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "app.incomodo.incomodo"
+              }
+            }
+          ]
         }
       }
     }
