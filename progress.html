@@ -414,12 +414,30 @@
       </div>
 
       <div class="issue">
-        <input type="checkbox" id="i32">
+        <input type="checkbox" id="i32" checked>
         <div class="issue-body">
           <p>手紙の送信・開封・削除に「待ちすぎたら打ち切る」仕組みがない</p>
-          <p class="why">ポストの登録で読み込み中のまま止まる問題があり、位置情報とポストの読み書きには打ち切りを入れた（MANUAL 29章）。手紙の送信は、打ち切った後にサーバーへ届くことがあり、利用者がやり直すと二重送信・切手の二重消費になる。送信中の表示や、送信待ちの手紙を一覧に出すなど、画面の作りから検討する。</p>
+          <p class="why"><b>解決（2026-09-17、MANUAL 31章）。</b>手紙の送信・開封・捨てるは20秒で待つのをやめ、「送信中」として画面を進める（書き込みはスマホに残り、つながると自動で送られる）。送信した画面は閉じるので二重に送れず、送った手紙の一覧には「送信待ち」と表示。開封は2回できないようにした。</p>
         </div>
         <span class="tag note">要対応</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i33">
+        <div class="issue-body">
+          <p>アプリ内の通報・ブロック機能がない</p>
+          <p class="why">利用者同士がやりとりするアプリでは、App Storeの審査で「不適切な内容を通報する手段」と「相手をブロックする手段」が求められる。利用規約の下書き（B15）でも前提にしている。友だちの解除だけでは、見知らぬ人と文通するランダムポスト（F-04）に対応できない。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i34">
+        <div class="issue-body">
+          <p>アプリ内の退会（アカウント削除）機能がない</p>
+          <p class="why">App Store・Google Playの審査では、アプリ内からアカウントを削除できることが求められる。削除するのはアカウント・ポスト・届いた手紙・切手など本人のデータで、相手に届けた手紙は相手の手元に残す（利用規約の下書きに合わせる）。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
       </div>
 
       <div class="issue">
@@ -552,7 +570,7 @@
         <input type="checkbox" id="i15">
         <div class="issue-body">
           <p>利用規約・コミュニティガイドラインが未作成</p>
-          <p class="why">音声メッセージや写真、位置情報を扱うアプリのため、禁止事項やコンテンツモデレーション方針を含む利用規約が本開発〜βテスト前に必要。</p>
+          <p class="why"><b>下書きを作成（2026-09-17、MANUAL 32章、<code>terms.html</code>、LP未掲載）。</b>今の仕様（ポスト・工事期間・50m・切手・通知なし）に合わせ、相手の場所を探る・会うことを強要する・位置情報の偽装などを禁止事項に入れた。残り：対象年齢、有料アイテムの払い戻し、管轄裁判所を決める／通報・ブロック（B33）と退会（B34）の実装／専門家のレビュー。</p>
         </div>
         <span class="tag future">検討中</span>
       </div>
