@@ -18,6 +18,25 @@ final clockProvider = StreamProvider<DateTime>((ref) async* {
   yield* Stream.periodic(const Duration(minutes: 1), (_) => DateTime.now());
 });
 
+/// Where the user last asked us to check they are. Null until they tap
+/// the button — Incomodo never looks in the background. Shared so the
+/// home screen and the letters both work off the same answer.
+class HereNotifier extends Notifier<({double latitude, double longitude})?> {
+  @override
+  ({double latitude, double longitude})? build() => null;
+
+  /// Asks the device where we are and remembers it.
+  Future<void> check() async {
+    final position =
+        await ref.read(locationServiceProvider).getCurrentPosition();
+    state = (latitude: position.latitude, longitude: position.longitude);
+  }
+}
+
+final hereProvider =
+    NotifierProvider<HereNotifier, ({double latitude, double longitude})?>(
+        HereNotifier.new);
+
 /// The signed-in user's posts, keyed by slot. Empty when signed out.
 final postsProvider = StreamProvider<Map<PostSlot, Post>>((ref) {
   final user = ref.watch(authStateProvider).value;

@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/post.dart';
 import '../providers/auth_provider.dart';
+import '../providers/letter_provider.dart';
 import '../providers/post_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/post_slot_card.dart';
 import 'friends_screen.dart';
+import 'letters_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -17,10 +19,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _busy = false;
-
-  /// Last checked location, used to show how far each post is. Only ever
-  /// set by an explicit tap — Incomodo doesn't track you in the background.
-  ({double latitude, double longitude})? _here;
 
   String get _uid => ref.read(authStateProvider).value!.uid;
 
@@ -56,15 +54,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
   }
 
-  Future<void> _checkHere() async {
-    await _run('現在地を確認しました', () async {
-      final position =
-          await ref.read(locationServiceProvider).getCurrentPosition();
-      if (!mounted) return;
-      setState(() => _here =
-          (latitude: position.latitude, longitude: position.longitude));
-    });
-  }
+  Future<void> _checkHere() =>
+      _run('現在地を確認しました', ref.read(hereProvider.notifier).check);
 
   Future<void> _register(PostSlot slot) async {
     final name = await _askName(title: '${slot.label}を登録', initial: slot.label);
@@ -179,11 +170,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final profile = ref.watch(myProfileProvider).value;
     final posts = ref.watch(postsProvider);
     final now = ref.watch(clockProvider).value ?? DateTime.now();
+    final here = ref.watch(hereProvider);
+    final unopened = ref.watch(unopenedCountProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Incomodo'),
         actions: [
+          IconButton(
+            tooltip: '手紙',
+            // The count is the only hint you get: Incomodo never notifies.
+            icon: Badge.count(
+              count: unopened,
+              isLabelVisible: unopened > 0,
+              child: const Icon(Icons.mail_outline),
+            ),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LettersScreen()),
+            ),
+          ),
           IconButton(
             tooltip: '友だち',
             icon: const Icon(Icons.people_outline),
@@ -214,7 +219,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: OutlinedButton.icon(
                 onPressed: _busy ? null : _checkHere,
                 icon: const Icon(Icons.my_location, size: 18),
-                label: Text(_here == null ? 'ポストに着いたか確認' : '現在地を確認し直す'),
+                label: Text(here == null ? 'ポストに着いたか確認' : '現在地を確認し直す'),
               ),
             ),
             const SizedBox(height: 8),
@@ -224,10 +229,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 post: posts[slot],
                 now: now,
                 busy: _busy,
-                distanceMeters: _here == null || posts[slot] == null
+                distanceMeters: here == null || posts[slot] == null
                     ? null
                     : posts[slot]!
-                        .distanceFrom(_here!.latitude, _here!.longitude),
+                        .distanceFrom(here.latitude, here.longitude),
                 onRegister: () => _register(slot),
                 onRename: () => _rename(posts[slot]!),
                 onMove: () => _move(posts[slot]!),

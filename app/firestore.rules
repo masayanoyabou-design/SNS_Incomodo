@@ -51,6 +51,88 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time;
     }
 
+    // Letters delivered to {uid}. Anyone {uid} has accepted may write one,
+    // and only {uid} can read or open it. The body is fixed once sent:
+    // an update may only set the opening time, so a sender can't rewrite
+    // a letter after it has been delivered.
+    //
+    // Note: the rules cannot check that the reader is standing at a post
+    // — location isn't available here. That 50m rule lives in the app
+    // (see MANUAL 15 and backlog B23).
+    match /users/{uid}/letters/{letterId} {
+      function validLetter() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['fromUid', 'fromDisplayName', 'fromHandle',
+            'sentAt', 'openedAt'])
+          && d.keys().hasAll(['fromUid', 'fromDisplayName', 'fromHandle',
+            'sentAt', 'openedAt'])
+          && d.fromUid == request.auth.uid
+          && d.fromDisplayName is string && d.fromDisplayName.size() <= 20
+          && d.fromHandle is string
+          && d.sentAt == request.time
+          && d.openedAt == null;
+      }
+
+      function acceptedByRecipient() {
+        return exists(/databases/$(database)/documents/users/$(uid)/friends/$(request.auth.uid));
+      }
+
+      function onlyOpens() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['openedAt'])
+          && request.resource.data.openedAt == request.time;
+      }
+
+      allow read, delete: if signedInAs(uid);
+      allow create: if request.auth != null
+        && validLetter() && acceptedByRecipient();
+      allow update: if signedInAs(uid) && onlyOpens();
+
+      // The text, kept apart from the envelope so that an unopened letter
+      // is not sitting readable on the phone. Written by the sender in the
+      // same batch as the envelope (getAfter sees that envelope), and
+      // never served until the letter has actually been opened.
+      match /content/{part} {
+        allow read: if signedInAs(uid)
+          && get(/databases/$(database)/documents/users/$(uid)/letters/$(letterId))
+              .data.openedAt != null;
+        allow create: if request.auth != null
+          && part == 'body'
+          && request.resource.data.keys().hasOnly(['body'])
+          && request.resource.data.body is string
+          && request.resource.data.body.size() > 0
+          && request.resource.data.body.size() <= 1000
+          && getAfter(/databases/$(database)/documents/users/$(uid)/letters/$(letterId))
+              .data.fromUid == request.auth.uid;
+        // A delivered letter is never rewritten; the owner may bin it.
+        allow delete: if signedInAs(uid);
+      }
+    }
+
+    // The sender's own copy of a letter, so they can see it go from
+    // "delivered" to "received". Only the recipient may mark it opened.
+    match /users/{uid}/sentLetters/{letterId} {
+      function validCopy() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['toUid', 'toDisplayName', 'toHandle',
+            'body', 'sentAt', 'openedAt'])
+          && d.keys().hasAll(['toUid', 'toDisplayName', 'toHandle',
+            'body', 'sentAt', 'openedAt'])
+          && d.toUid is string
+          && d.body is string && d.body.size() > 0 && d.body.size() <= 1000
+          && d.sentAt == request.time
+          && d.openedAt == null;
+      }
+
+      allow read, delete: if signedInAs(uid);
+      allow create: if signedInAs(uid) && validCopy();
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.toUid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['openedAt'])
+        && request.resource.data.openedAt == request.time;
+    }
+
     // A user's mailboxes (PRD F-01). Fixed slot IDs cap each user at four,
     // with exactly one home. Construction timing is server-enforced so a
     // client can't skip the 48-hour wait by sending a backdated timestamp.
