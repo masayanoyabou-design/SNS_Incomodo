@@ -192,7 +192,7 @@
       </div>
       <div class="top-meta">
         <span class="label">Last reviewed</span><br>
-        2026-09-16
+        2026-09-17
       </div>
     </div>
     <div class="ring-wrap">
@@ -405,6 +405,15 @@
       </div>
 
       <div class="issue">
+        <input type="checkbox" id="i31">
+        <div class="issue-body">
+          <p>古いアプリに更新を促す仕組みがない</p>
+          <p class="why">公開後にセキュリティルールで新しい項目を必須にすると（例：P3-7で封筒・便箋の種類を必須にした）、まだ更新していない人のアプリは手紙を送れなくなる。公開前に「動作に必要な最低バージョン」をサーバーに置き、それより古いアプリでは更新をお願いする画面を出す仕組みを入れる（MANUAL 25章の注意点）。</p>
+        </div>
+        <span class="tag blocker">Blocker</span>
+      </div>
+
+      <div class="issue">
         <input type="checkbox" id="i27">
         <div class="issue-body">
           <p>実機での通し確認：手紙の「開封」だけ未確認</p>
@@ -417,7 +426,7 @@
         <input type="checkbox" id="i22" checked>
         <div class="issue-body">
           <p>セキュリティルールが「不正を拒否できるか」が未検証</p>
-          <p class="why">Firestoreエミュレータに対して2人のユーザーを名乗ってリクエストを送る検証スクリプト（`app/tool/rules_check.dart`）を用意し、39件が通過。工事の日時を過去にする・5つ目のポストを作る・他人のポストを書き換える・友だちでない人に手紙を送る・未開封の本文を読む・切手を使わずに送る、などが拒否されることを確認済み。Node.js不要でDartとエミュレータだけで動く（MANUAL 19章）。</p>
+          <p class="why">Firestoreエミュレータに対して2人のユーザーを名乗ってリクエストを送る検証スクリプト（`app/tool/rules_check.dart`）を用意し、65件が通過。工事の日時を過去にする・5つ目のポストを作る・他人のポストを書き換える・友だちでない人に手紙を送る・未開封の本文を読む・切手を使わずに送る、などが拒否されることを確認済み。Node.js不要でDartとエミュレータだけで動く（MANUAL 19章）。</p>
         </div>
         <span class="tag note">要対応</span>
       </div>
@@ -558,10 +567,10 @@
       </div>
 
       <div class="issue">
-        <input type="checkbox" id="i28">
+        <input type="checkbox" id="i28" checked>
         <div class="issue-body">
           <p>消印に「開封した場所」が入らない／手紙のアルバムがない</p>
-          <p class="why">開封した手紙には日付入りの消印が押されるようになったが（P3-5）、要件定義F-03の「消印（開封日・場所）」のうち場所は記録していない。開封時にポスト名を保存するには、開封時に書き換えてよい項目をルールで増やす必要がある。開封した手紙を並べて振り返るアルバム（コレクション機能）も未実装。</p>
+          <p class="why"><b>解決（2026-09-17、MANUAL 26章）。</b>開封時にポストの名前を受取人の封筒に記録し、消印の上段に入れた。差出人には場所を見せない（ポストの名前から場所が分かるため）。開封済みの手紙を「切手に消印」の姿で並べるアルバムを追加。あわせて、開封済みの手紙の開封日時を上書きできた穴をルールで塞いだ。</p>
         </div>
         <span class="tag future">検討中</span>
       </div>
@@ -594,10 +603,10 @@
       </div>
 
       <div class="issue">
-        <input type="checkbox" id="i25">
+        <input type="checkbox" id="i25" checked>
         <div class="issue-body">
           <p>手紙の削除・整理機能が未実装</p>
-          <p class="why">受信箱・送信箱に手紙がたまり続け、消す手段がない（P3-3C）。削除機能を作るときは、封筒だけでなく本文のサブドキュメント（`letters/{id}/content/body`）も一緒に消すこと。開封済みの手紙はアルバムとして残す設計（F-03のコレクション機能）と合わせて検討する。</p>
+          <p class="why"><b>解決（2026-09-17、MANUAL 27章）。</b>手紙の画面から1通ずつ捨てられる（確認あり）。届いた手紙は封筒と本文を一緒に削除。送った手紙は自分の控えだけが消え、相手の手紙は残る。差出人が控えを捨てた後でも受取人が開封できるよう、開封処理を直した。整理はアルバム（B28）で行う。</p>
         </div>
         <span class="tag future">検討中</span>
       </div>
