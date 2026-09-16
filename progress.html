@@ -203,7 +203,7 @@
       </svg>
       <div class="ring-label">
         <b id="ring-caption">全タスク未着手</b>
-        ロードマップ全23タスク中の完了率
+        ロードマップ全24タスク中の完了率
       </div>
     </div>
   </header>
@@ -304,6 +304,7 @@
           <li><input type="checkbox" id="p3-3" checked><label for="p3-3">GPS連動の開封判定ロジック実装</label></li>
           <li><input type="checkbox" id="p3-3b" checked><label for="p3-3b">プロフィールと友だち（ID検索・招待リンク・QR）</label></li>
           <li><input type="checkbox" id="p3-3c" checked><label for="p3-3c">手紙の送受信（テキスト・配送/受取ステータス）</label></li>
+          <li><input type="checkbox" id="p3-6"><label for="p3-6">切手システム（毎日の無料配布・送信時に消費）</label></li>
           <li><input type="checkbox" id="p3-4"><label for="p3-4">ボイスメッセージ録音・圧縮・送信機能</label></li>
           <li><input type="checkbox" id="p3-5"><label for="p3-5">UIのクラフト紙風デザイン適用</label></li>
         </ul>
@@ -542,6 +543,15 @@
         <div class="issue-body">
           <p>50m以内の判定をサーバー側で強制できない</p>
           <p class="why">Firestoreのセキュリティルールは位置情報を検証できないため、距離の判定はアプリ側のみ。ただし手紙の本文は封筒と別のドキュメントに分け、開封済みになるまでサーバーが渡さないようにしたので（P3-3C）、「届いた手紙の中身がスマホに先に降りてきている」状態は解消済み。残るのは位置を偽装した場合だけで、MVPでは許容する（損なわれるのは本人の体験だけで、他人に実害がないため）。厳密にするならCloud Functions（Blazeプラン必須）での検証が必要。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i26">
+        <div class="issue-body">
+          <p>有料切手（アプリ内課金）が未実装</p>
+          <p class="why">要件定義F-05のうち、無料切手の配布・消費はP3-6で実装する。追加切手・特別デザイン切手の販売はアプリ内課金（App Store / Google Play）が必要で、開発者アカウント（B13）と特定商取引法表記（B16）が前提になる。リリース後のマネタイズ開始時に着手する。</p>
         </div>
         <span class="tag future">検討中</span>
       </div>
