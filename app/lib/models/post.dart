@@ -49,6 +49,7 @@ class Post {
     required this.latitude,
     required this.longitude,
     required this.constructionStartedAt,
+    this.firstPost = false,
   });
 
   /// New or moved posts are "under construction" for this long before
@@ -66,7 +67,14 @@ class Post {
   /// Set by the server when the post is created or its location changes.
   final DateTime constructionStartedAt;
 
-  DateTime get activatesAt => constructionStartedAt.add(constructionPeriod);
+  /// The first post an account ever registers opens for letters straight
+  /// away: a newcomer shouldn't have to wait two days to try the app. Only
+  /// once per account (enforced in the rules), and moving it ends it.
+  final bool firstPost;
+
+  DateTime get activatesAt => firstPost
+      ? constructionStartedAt
+      : constructionStartedAt.add(constructionPeriod);
 
   bool isActive(DateTime now) => !now.isBefore(activatesAt);
 

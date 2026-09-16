@@ -234,7 +234,8 @@ service cloud.firestore {
 
       function validShape() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['name', 'latitude', 'longitude', 'constructionStartedAt'])
+        return d.keys().hasOnly(['name', 'latitude', 'longitude', 'constructionStartedAt', 'firstPost'])
+          && (!('firstPost' in d) || d.firstPost == true)
           && d.keys().hasAll(['name', 'latitude', 'longitude', 'constructionStartedAt'])
           && d.name is string && d.name.size() > 0 && d.name.size() <= 20
           && d.latitude is number && d.latitude >= -90 && d.latitude <= 90
@@ -249,13 +250,39 @@ service cloud.firestore {
 
       allow read, delete: if signedInAs(uid);
 
-      allow create: if signedInAs(uid) && validSlot() && validShape()
-        && request.resource.data.constructionStartedAt == request.time;
+      // The first post an account ever registers skips construction, so a
+      // newcomer can try the app straight away. It has to claim the
+      // account's one-off marker in the same batch, and the marker can
+      // never be removed — deleting the post and registering again gets
+      // the usual 48 hours.
+      function firstPostUsed() {
+        return /databases/$(database)/documents/users/$(uid)/meta/firstPost;
+      }
 
+      function claimsFirstPost() {
+        return !exists(firstPostUsed()) && existsAfter(firstPostUsed());
+      }
+
+      allow create: if signedInAs(uid) && validSlot() && validShape()
+        && request.resource.data.constructionStartedAt == request.time
+        && (!('firstPost' in request.resource.data) || claimsFirstPost());
+
+      // Renaming keeps everything, the first-post mark included. Moving
+      // restarts construction and drops the mark: it is a new place.
       allow update: if signedInAs(uid) && validShape()
         && (moved()
-          ? request.resource.data.constructionStartedAt == request.time
-          : request.resource.data.constructionStartedAt == resource.data.constructionStartedAt);
+          ? (request.resource.data.constructionStartedAt == request.time
+            && !('firstPost' in request.resource.data))
+          : (request.resource.data.constructionStartedAt == resource.data.constructionStartedAt
+            && request.resource.data.get('firstPost', false) == resource.data.get('firstPost', false)));
+    }
+
+    match /users/{uid}/meta/firstPost {
+      allow read: if signedInAs(uid);
+      // Written once, alongside the first post; never changed or removed.
+      allow create: if signedInAs(uid)
+        && request.resource.data.keys().hasOnly(['usedAt'])
+        && request.resource.data.usedAt == request.time;
     }
   }
 }

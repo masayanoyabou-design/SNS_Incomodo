@@ -48,6 +48,24 @@ void main() {
       final now = startedAt.add(const Duration(days: 10));
       expect(buildPost().remainingConstruction(now), Duration.zero);
     });
+
+    test('the first post of an account needs no construction', () {
+      final first = Post(
+        slot: PostSlot.home,
+        name: '自宅',
+        latitude: 35.6812,
+        longitude: 139.7671,
+        constructionStartedAt: startedAt,
+        firstPost: true,
+      );
+      expect(first.isActive(startedAt), isTrue);
+      expect(first.remainingConstruction(startedAt), Duration.zero);
+      expect(
+        first.canOpenLetters(
+            now: startedAt, latitude: 35.6812, longitude: 139.7671),
+        isTrue,
+      );
+    });
   });
 
   group('unlock radius', () {

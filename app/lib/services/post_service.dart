@@ -19,9 +19,18 @@ class PostService {
         );
   }
 
+  /// Marks that the account's one construction-free post has been used.
+  /// Never deleted, so deleting that post and registering again doesn't
+  /// get a second one.
+  DocumentReference<Map<String, dynamic>> _firstPostUsed(String uid) =>
+      _firestore.collection('users').doc(uid).collection('meta').doc('firstPost');
+
   /// Creates a post, or updates it. Moving an existing post restarts its
   /// construction period; renaming it does not.
-  Future<void> savePost({
+  ///
+  /// Returns whether this was the account's first post, which needs no
+  /// construction at all.
+  Future<bool> savePost({
     required String uid,
     required PostSlot slot,
     required String name,
@@ -33,12 +42,31 @@ class PostService {
     if (error != null) throw ArgumentError(error);
 
     final ref = _posts(uid).doc(slot.id);
-    final existing = await ref.get();
-    final data = existing.data();
-    final moved = data == null ||
-        data['latitude'] != latitude ||
-        data['longitude'] != longitude;
+    final data = (await ref.get()).data();
 
+    if (data == null) {
+      final used = (await _firstPostUsed(uid).get()).exists;
+      final fields = {
+        'name': name.trim(),
+        'latitude': latitude,
+        'longitude': longitude,
+        'constructionStartedAt': FieldValue.serverTimestamp(),
+        if (!used) 'firstPost': true,
+      };
+      if (used) {
+        await ref.set(fields);
+      } else {
+        await (_firestore.batch()
+              ..set(ref, fields)
+              ..set(_firstPostUsed(uid),
+                  {'usedAt': FieldValue.serverTimestamp()}))
+            .commit();
+      }
+      return !used;
+    }
+
+    final moved =
+        data['latitude'] != latitude || data['longitude'] != longitude;
     await ref.set({
       'name': name.trim(),
       'latitude': latitude,
@@ -46,7 +74,10 @@ class PostService {
       'constructionStartedAt': moved
           ? FieldValue.serverTimestamp()
           : data['constructionStartedAt'],
+      // A moved post is a new place, and is built like any other.
+      if (!moved && data['firstPost'] == true) 'firstPost': true,
     });
+    return false;
   }
 
   Future<void> deletePost({required String uid, required PostSlot slot}) =>
@@ -61,6 +92,7 @@ class PostService {
       latitude: (data['latitude'] as num).toDouble(),
       longitude: (data['longitude'] as num).toDouble(),
       constructionStartedAt: startedAt?.toDate() ?? DateTime.now(),
+      firstPost: data['firstPost'] == true,
     );
   }
 }

@@ -622,6 +622,101 @@ Future<void> main() async {
   });
 
   print('');
+  print('最初のポストは工事なし');
+  const erin = 'erin';
+  const yes = {'booleanValue': true};
+  Map<String, dynamic> firstPostMarker(String uid) =>
+      set('users/$uid/meta/firstPost', {}, serverTimestamps: ['usedAt']);
+  Map<String, dynamic> newPost(
+    String uid,
+    String slot,
+    String name, {
+    Object? firstPost,
+    double latitude = 35.0,
+  }) => set(
+    'users/$uid/posts/$slot',
+    {...post(name, latitude: latitude), 'firstPost': ?firstPost},
+    serverTimestamps: ['constructionStartedAt'],
+  );
+  Future<Object> startedAtOf(String path, String uid) async {
+    await read(path, as: uid);
+    return (jsonDecode(_lastBody)['fields'] as Map)['constructionStartedAt']
+        as Object;
+  }
+
+  await deny(
+    'skipping construction without claiming the one-off',
+    () => commit([newPost(erin, 'home', '自宅', firstPost: yes)], as: erin),
+  );
+  await deny(
+    'or with a mark that is not simply true',
+    () => commit([
+      newPost(erin, 'home', '自宅', firstPost: {'booleanValue': false}),
+      firstPostMarker(erin),
+    ], as: erin),
+  );
+  await deny(
+    'or claiming it for someone else',
+    () => commit([
+      newPost(erin, 'home', '自宅', firstPost: yes),
+      firstPostMarker(erin),
+    ], as: bob),
+  );
+  await allow(
+    'the first post of an account skips construction',
+    () => commit([
+      newPost(erin, 'home', '自宅', firstPost: yes),
+      firstPostMarker(erin),
+    ], as: erin),
+  );
+  await deny(
+    'a second post cannot skip it too',
+    () => commit([newPost(erin, 'slot1', '拠点1', firstPost: yes)], as: erin),
+  );
+  await allow(
+    'though it can be registered the usual way',
+    () => commit([newPost(erin, 'slot1', '拠点1')], as: erin),
+  );
+  await deny(
+    'the one-off cannot be given back',
+    () => commit([
+      {'delete': docName('users/$erin/meta/firstPost')},
+    ], as: erin),
+  );
+  await allow('renaming the first post keeps it construction-free', () async {
+    final startedAt = await startedAtOf('users/$erin/posts/home', erin);
+    return commit([
+      set('users/$erin/posts/home', {
+        ...post('うち'),
+        'constructionStartedAt': startedAt,
+        'firstPost': yes,
+      }),
+    ], as: erin);
+  });
+  await deny('moving it cannot keep that', () async {
+    return commit([
+      newPost(erin, 'home', 'うち', firstPost: yes, latitude: 36.0),
+    ], as: erin);
+  });
+  await deny('nor can a post that never had it gain it', () async {
+    final startedAt = await startedAtOf('users/$erin/posts/slot1', erin);
+    return commit([
+      set('users/$erin/posts/slot1', {
+        ...post('拠点1'),
+        'constructionStartedAt': startedAt,
+        'firstPost': yes,
+      }),
+    ], as: erin);
+  });
+  await commit([
+    {'delete': docName('users/$erin/posts/home')},
+  ], as: erin);
+  await deny(
+    'deleting it and registering again does not skip construction again',
+    () => commit([newPost(erin, 'home', '自宅', firstPost: yes)], as: erin),
+  );
+
+  print('');
   print('プロフィールとID');
   await deny(
     'claiming a handle for someone else',

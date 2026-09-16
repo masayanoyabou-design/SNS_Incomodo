@@ -37,14 +37,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  Future<void> _run(String successMessage, Future<void> Function() action) async {
+  /// Runs [action], then says [successMessage] — or, when that is null, lets
+  /// the caller decide what to say from whether it succeeded.
+  Future<bool> _run(
+      String? successMessage, Future<void> Function() action) async {
     setState(() => _busy = true);
     try {
       await action();
-      _showMessage(successMessage);
+      if (successMessage != null) _showMessage(successMessage);
+      return true;
     } catch (e) {
       debugPrint('HomeScreen action failed: $e');
       _showMessage('失敗しました: $e');
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -57,10 +62,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _saveAtCurrentLocation(PostSlot slot, String name) async {
+  /// Returns whether it was the account's first post (no construction).
+  Future<bool> _saveAtCurrentLocation(PostSlot slot, String name) async {
     final position =
         await ref.read(locationServiceProvider).getCurrentPosition();
-    await ref.read(postServiceProvider).savePost(
+    return ref.read(postServiceProvider).savePost(
           uid: _uid,
           slot: slot,
           name: name,
@@ -75,8 +81,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _register(PostSlot slot) async {
     final name = await _askName(title: '${slot.label}を登録', initial: slot.label);
     if (name == null) return;
-    await _run('「$name」を登録しました。48時間後に稼働します',
-        () => _saveAtCurrentLocation(slot, name));
+    var first = false;
+    final saved = await _run(
+        null, () async => first = await _saveAtCurrentLocation(slot, name));
+    if (!saved) return;
+    _showMessage(first
+        ? '「$name」を登録しました。最初のポストなので、すぐに使えます'
+        : '「$name」を登録しました。48時間後に稼働します');
   }
 
   Future<void> _rename(Post post) async {
@@ -233,7 +244,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
             const Text('手紙の受け取り場所（ポスト）を最大4箇所まで登録できます。'
-                '登録・移設から48時間は工事中で、手紙を受け取れません。'
+                '最初に登録するポストはすぐ使えます。2つ目以降と移設したポストは、'
+                '48時間の工事が終わるまで手紙を開けません。'
                 '手紙はポストから50m以内でしか開けません。'),
             const SizedBox(height: 12),
             Align(

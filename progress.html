@@ -300,7 +300,7 @@
         <ul class="task-list">
           <li><input type="checkbox" id="p3-1" checked><label for="p3-1">開発環境構築（Flutter + Firebase）</label></li>
           <li><input type="checkbox" id="p3-2" checked><label for="p3-2">ユーザー認証（Googleログイン）</label></li>
-          <li><input type="checkbox" id="p3-2b" checked><label for="p3-2b">ポスト登録機能（最大4箇所・48時間の工事期間）</label></li>
+          <li><input type="checkbox" id="p3-2b" checked><label for="p3-2b">ポスト登録機能（最大4箇所・48時間の工事期間／最初のポストは工事なし）</label></li>
           <li><input type="checkbox" id="p3-3" checked><label for="p3-3">GPS連動の開封判定ロジック実装</label></li>
           <li><input type="checkbox" id="p3-3b" checked><label for="p3-3b">プロフィールと友だち（ID検索・招待リンク・QR）</label></li>
           <li><input type="checkbox" id="p3-3c" checked><label for="p3-3c">手紙の送受信（テキスト・配送/受取ステータス）</label></li>
@@ -426,7 +426,7 @@
         <input type="checkbox" id="i22" checked>
         <div class="issue-body">
           <p>セキュリティルールが「不正を拒否できるか」が未検証</p>
-          <p class="why">Firestoreエミュレータに対して2人のユーザーを名乗ってリクエストを送る検証スクリプト（`app/tool/rules_check.dart`）を用意し、65件が通過。工事の日時を過去にする・5つ目のポストを作る・他人のポストを書き換える・友だちでない人に手紙を送る・未開封の本文を読む・切手を使わずに送る、などが拒否されることを確認済み。Node.js不要でDartとエミュレータだけで動く（MANUAL 19章）。</p>
+          <p class="why">Firestoreエミュレータに対して2人のユーザーを名乗ってリクエストを送る検証スクリプト（`app/tool/rules_check.dart`）を用意し、76件が通過。工事の日時を過去にする・5つ目のポストを作る・他人のポストを書き換える・友だちでない人に手紙を送る・未開封の本文を読む・切手を使わずに送る、などが拒否されることを確認済み。Node.js不要でDartとエミュレータだけで動く（MANUAL 19章）。</p>
         </div>
         <span class="tag note">要対応</span>
       </div>
