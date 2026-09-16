@@ -203,7 +203,7 @@
       </svg>
       <div class="ring-label">
         <b id="ring-caption">全タスク未着手</b>
-        ロードマップ全24タスク中の完了率
+        ロードマップ全25タスク中の完了率
       </div>
     </div>
   </header>
@@ -232,7 +232,7 @@
     <div class="stat">
       <span class="label">アプリ開発</span>
       <h3>Flutter + Firebase</h3>
-      <span class="pill progress">残りはボイスメッセージのみ</span>
+      <span class="pill progress">残りは切手の絵柄とボイス</span>
     </div>
   </section>
 
@@ -305,6 +305,7 @@
           <li><input type="checkbox" id="p3-3b" checked><label for="p3-3b">プロフィールと友だち（ID検索・招待リンク・QR）</label></li>
           <li><input type="checkbox" id="p3-3c" checked><label for="p3-3c">手紙の送受信（テキスト・配送/受取ステータス）</label></li>
           <li><input type="checkbox" id="p3-6" checked><label for="p3-6">切手システム（毎日の無料配布・送信時に消費）</label></li>
+          <li><input type="checkbox" id="p3-7"><label for="p3-7">切手の絵柄（選んで貼る・未開封の封筒に表示）</label></li>
           <li><input type="checkbox" id="p3-4"><label for="p3-4">ボイスメッセージ録音・圧縮・送信機能</label></li>
           <li><input type="checkbox" id="p3-5" checked><label for="p3-5">UIのクラフト紙風デザイン適用</label></li>
         </ul>
@@ -568,8 +569,26 @@
       <div class="issue">
         <input type="checkbox" id="i26">
         <div class="issue-body">
-          <p>有料切手（アプリ内課金）が未実装</p>
-          <p class="why">要件定義F-05のうち、無料切手の配布・消費はP3-6で実装する。追加切手・特別デザイン切手の販売はアプリ内課金（App Store / Google Play）が必要で、開発者アカウント（B13）と特定商取引法表記（B16）が前提になる。リリース後のマネタイズ開始時に着手する。</p>
+          <p>有料の特別デザイン切手（アプリ内課金）が未実装</p>
+          <p class="why">方針決定済み（MANUAL 23章）：特別デザインの切手を販売する。見た目だけの違いにとどめ、買った人が有利にならないようにする。<b>ガチャは採用しない</b>（コンセプトと矛盾し、「選んで貼る」価値も薄れるため）。アプリ内課金には開発者アカウント（B13）と特定商取引法表記（B16）が必要で、iOSでは売上の15〜30%が手数料になる。販売開始前に、景品表示法・資金決済法（前払式支払手段）の扱いを専門家に確認する。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i29">
+        <div class="issue-body">
+          <p>季節限定・場所限定の切手の仕組みが未実装</p>
+          <p class="why">リリース前後に着手する（MANUAL 23章の段階2）。季節・記念の限定切手は、手に入る時期で希少性を出す。場所限定の切手は、そのポストの近くに行かないと手に入らないもので、コラボ切手（B30）の土台になる。「行かなきゃ、読めない」と同じ発想で、Incomodoにしかできない形。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i30">
+        <div class="issue-body">
+          <p>コラボ切手の営業（店舗・自治体・作家）</p>
+          <p class="why">初期の収益源として最も有力（MANUAL 23章）。カフェ・書店などは「来店した人だけがもらえる切手」、自治体は観光促進、作家とはデザイン切手の売上を分け合う。お店や自治体からの収入はユーザーが少ない時期でも成り立ち、Appleの手数料もかからない。B29の仕組みができてから営業を始める。</p>
         </div>
         <span class="tag future">検討中</span>
       </div>
