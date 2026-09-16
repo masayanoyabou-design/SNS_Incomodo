@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:incomodo/models/letter.dart';
 import 'package:incomodo/models/post.dart';
+import 'package:incomodo/models/stamp_wallet.dart';
 import 'package:incomodo/models/user_profile.dart';
 import 'package:incomodo/providers/auth_provider.dart';
 import 'package:incomodo/providers/letter_provider.dart';
 import 'package:incomodo/providers/post_provider.dart';
+import 'package:incomodo/providers/stamp_provider.dart';
 import 'package:incomodo/providers/user_provider.dart';
 import 'package:incomodo/screens/letter_screen.dart';
 import 'package:incomodo/screens/letters_screen.dart';
@@ -53,6 +55,7 @@ void main() {
     Map<PostSlot, Post> posts = const {},
     ({double latitude, double longitude})? here,
     LetterService? letters,
+    int stamps = 3,
   }) =>
       ProviderScope(
         overrides: [
@@ -64,6 +67,8 @@ void main() {
           postsProvider.overrideWith((ref) => Stream.value(posts)),
           clockProvider.overrideWith((ref) => Stream.value(now)),
           hereProvider.overrideWith(() => _FixedHere(here)),
+          stampWalletProvider.overrideWith((ref) => Stream.value(
+              StampWallet(count: stamps, refilledOn: jstDate(now)))),
           if (letters != null) letterServiceProvider.overrideWithValue(letters),
         ],
         // AuthGate keeps these two alive for the whole app; screens read
@@ -205,6 +210,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(service.sent, [('me', 'u2', '駅前のカフェで待ってる')]);
+    });
+
+    testWidgets('how many stamps are left is on the page', (tester) async {
+      await tester.pumpWidget(app(
+        const WriteLetterScreen(to: friend),
+        friends: [friend],
+        stamps: 3,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('切手 3枚'), findsOneWidget);
+    });
+
+    testWidgets('out of stamps, there is no sending until tomorrow',
+        (tester) async {
+      final service = _FakeLetterService();
+      await tester.pumpWidget(app(
+        const WriteLetterScreen(to: friend),
+        friends: [friend],
+        letters: service,
+        stamps: 0,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('切手 0枚'), findsOneWidget);
+      expect(find.textContaining('明日また'), findsOneWidget);
+
+      final button =
+          tester.widget<FilledButton>(find.byType(FilledButton).first);
+      expect(button.onPressed, isNull);
+      expect(service.sent, isEmpty);
     });
   });
 }

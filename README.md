@@ -17,7 +17,8 @@ SNS_Incomodo/
 ├── ads/                      Meta広告用クリエイティブ（フィード用・ストーリーズ用）
 ├── app/                      スマホアプリ本体（Flutter + Firebase、開発中）
 │   ├── lib/                  アプリのコード（models/・services/・providers/・screens/・widgets/ に分離）
-│   ├── test/                 業務ルールの自動テスト（`flutter test` で実行）
+│   ├── test/                 業務ルールと画面の自動テスト（`flutter test` で実行）
+│   ├── tool/rules_check.dart  セキュリティルールの検証（Firestoreエミュレータ必須）
 │   └── firestore.rules       データベースのセキュリティルール
 └── docs/                     元の仕様書
     ├── 要件定義.md
@@ -43,7 +44,7 @@ SNS_Incomodo/
 `progress.html` を開くと、LP公開からアプリリリースまでのロードマップと、解決すべき課題（バックログ）を確認できます。チェック状態はブラウザのlocalStorageに保存されます。
 
 - ロードマップの各タスクには `P1-1`〜`P4-5` の参照番号（途中で分割したタスクは `P3-2B` のように末尾に英字）
-- バックログの各課題には `B1`〜`B26` の参照番号
+- バックログの各課題には `B1`〜`B27` の参照番号
 
 が付いているので、「P2-3が終わった」のように番号で指示できます。
 
@@ -59,4 +60,4 @@ SNS_Incomodo/
 - Firebase（Authentication・Firestore〈東京リージョン〉・Storage）
 - QRコード表示: qr_flutter（招待用。読み取りは未実装）
 - 状態管理: Riverpod（見た目とロジックを分離し、UIを後から差し替えやすくするため）
-- 開発環境の構築手順・ハマりどころは `MANUAL.md` の10〜18章を参照
+- 開発環境の構築手順・ハマりどころは `MANUAL.md` の10〜20章を参照

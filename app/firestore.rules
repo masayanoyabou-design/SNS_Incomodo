@@ -51,6 +51,44 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time;
     }
 
+    // Stamps (PRD F-05). Sending costs one, a couple arrive each day, and
+    // they stop piling up at a ceiling — so the limit on writing is the
+    // day itself, not the user's patience.
+    //
+    // The day is Japan's, not UTC, so stamps arrive at midnight where the
+    // user is. This matches jstDate() in lib/models/stamp_wallet.dart;
+    // the two have to change together.
+    match /users/{uid}/stamps/wallet {
+      function today() {
+        return (request.time + duration.value(9, 'h')).date();
+      }
+
+      function refillOf(count) {
+        return count + 2 > 10 ? (count > 10 ? count : 10) : count + 2;
+      }
+
+      allow read: if signedInAs(uid);
+
+      // First ever wallet: today's stamps, dated today.
+      allow create: if signedInAs(uid)
+        && request.resource.data.keys().hasOnly(['count', 'refilledOn'])
+        && request.resource.data.count == 2
+        && request.resource.data.refilledOn == today();
+
+      allow update: if signedInAs(uid)
+        && request.resource.data.keys().hasOnly(['count', 'refilledOn'])
+        && (
+          // A refill, once per day, capped — the date must move forward.
+          (resource.data.refilledOn < today()
+            && request.resource.data.refilledOn == today()
+            && request.resource.data.count == refillOf(resource.data.count))
+          // Or spending exactly one stamp on a letter.
+          || (request.resource.data.refilledOn == resource.data.refilledOn
+            && resource.data.count >= 1
+            && request.resource.data.count == resource.data.count - 1)
+        );
+    }
+
     // Letters delivered to {uid}. Anyone {uid} has accepted may write one,
     // and only {uid} can read or open it. The body is fixed once sent:
     // an update may only set the opening time, so a sender can't rewrite
@@ -77,6 +115,14 @@ service cloud.firestore {
         return exists(/databases/$(database)/documents/users/$(uid)/friends/$(request.auth.uid));
       }
 
+      // A letter has to carry a stamp. The sender's wallet must come out
+      // of this same batch one lighter, so leaving the stamp out of the
+      // batch — or not having one — refuses the letter itself.
+      function stampSpent() {
+        let wallet = /databases/$(database)/documents/users/$(request.auth.uid)/stamps/wallet;
+        return getAfter(wallet).data.count == get(wallet).data.count - 1;
+      }
+
       function onlyOpens() {
         return request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['openedAt'])
@@ -85,7 +131,7 @@ service cloud.firestore {
 
       allow read, delete: if signedInAs(uid);
       allow create: if request.auth != null
-        && validLetter() && acceptedByRecipient();
+        && validLetter() && acceptedByRecipient() && stampSpent();
       allow update: if signedInAs(uid) && onlyOpens();
 
       // The text, kept apart from the envelope so that an unopened letter

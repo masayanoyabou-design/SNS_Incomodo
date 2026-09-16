@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/letter.dart';
 import '../models/user_profile.dart';
+import 'stamp_service.dart';
 
 /// Letters, written in three pieces by one batch:
 ///
@@ -28,6 +29,9 @@ class LetterService {
 
   /// Delivers a letter. Only works if [to] has accepted [from] as a friend
   /// — that entry is what grants the permission (enforced in the rules).
+  ///
+  /// The stamp is spent in the same batch: out of stamps means the whole
+  /// thing is refused, so a letter can never go out unpaid.
   Future<void> sendLetter({
     required UserProfile from,
     required UserProfile to,
@@ -39,6 +43,8 @@ class LetterService {
 
     final id = _received(to.uid).doc().id;
     await (_firestore.batch()
+          ..update(StampService.walletRef(_firestore, from.uid),
+              {'count': FieldValue.increment(-1)})
           ..set(_received(to.uid).doc(id), {
             'fromUid': from.uid,
             'fromDisplayName': from.displayName,

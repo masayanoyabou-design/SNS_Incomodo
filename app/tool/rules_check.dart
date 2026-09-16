@@ -89,6 +89,19 @@ Map<String, dynamic> set(String path, Map<String, Object> fields,
         ],
     };
 
+/// Adds [by] to [field], the way FieldValue.increment does.
+Map<String, dynamic> increment(String path, String field, int by) => {
+      'update': {'name': docName(path), 'fields': <String, Object>{}},
+      'updateMask': {'fieldPaths': <String>[]},
+      'updateTransforms': [
+        {
+          'fieldPath': field,
+          'increment': {'integerValue': '$by'}
+        }
+      ],
+      'currentDocument': {'exists': true},
+    };
+
 /// Touches only [field], setting it to the server's clock.
 Map<String, dynamic> stamp(String path, String field) => {
       'update': {'name': docName(path), 'fields': <String, Object>{}},
@@ -129,6 +142,20 @@ Future<void> deny(String what, Future<int> Function() action) async {
 const alice = 'alice';
 const bob = 'bob';
 const carol = 'carol';
+const dave = 'dave';
+
+/// The day in Japan as midnight UTC — the same thing today() computes in
+/// the rules.
+final today = () {
+  final jst = DateTime.now().toUtc().add(const Duration(hours: 9));
+  return DateTime.utc(jst.year, jst.month, jst.day);
+}();
+final yesterday = today.subtract(const Duration(days: 1));
+
+Map<String, Object> purse(int count, DateTime on) => {
+      'count': {'integerValue': '$count'},
+      'refilledOn': time(on),
+    };
 
 Map<String, Object> envelope(String fromUid) => {
       'fromUid': str(fromUid),
@@ -150,6 +177,12 @@ List<Map<String, dynamic>> delivery(String id, String fromUid) => [
       }, serverTimestamps: ['sentAt']),
     ];
 
+/// A delivery with its stamp, which is what the app always sends.
+List<Map<String, dynamic>> stamped(String id, String fromUid) => [
+      increment('users/$fromUid/stamps/wallet', 'count', -1),
+      ...delivery(id, fromUid),
+    ];
+
 Map<String, Object> post(String name, {double latitude = 35.0}) => {
       'name': str(name),
       'latitude': number(latitude),
@@ -165,16 +198,21 @@ Future<void> main() async {
     // Alice has accepted Bob, so Bob may write to her. Carol she has not.
     set('users/$alice/friends/$bob',
         {'displayName': str('ボブ'), 'handle': str('bob')}),
+    // Everyone but Dave starts with stamps, so a refused letter is
+    // refused for the reason under test and not for want of one.
+    set('users/$alice/stamps/wallet', purse(5, today)),
+    set('users/$bob/stamps/wallet', purse(5, today)),
+    set('users/$carol/stamps/wallet', purse(5, today)),
   ], as: 'owner');
 
   print('');
   print('手紙を届ける');
   await deny('a stranger cannot deliver a letter',
-      () => commit(delivery('l0', carol), as: carol));
+      () => commit(stamped('l0', carol), as: carol));
   await deny('nor by putting someone else\'s name on it',
-      () => commit(delivery('l0', bob), as: carol));
+      () => commit(stamped('l0', bob), as: carol));
   await allow('someone the recipient accepted can deliver',
-      () => commit(delivery('l1', bob), as: bob));
+      () => commit(stamped('l1', bob), as: bob));
   await deny('a backdated letter is refused', () {
     final old = DateTime.now().subtract(const Duration(days: 3));
     return commit([
@@ -217,6 +255,73 @@ Future<void> main() async {
       'someone else cannot mark the sender\'s copy received',
       () =>
           commit([stamp('users/$bob/sentLetters/l1', 'openedAt')], as: carol));
+
+  print('');
+  print('切手（P3-6）');
+  await deny(
+      'a wallet cannot be conjured with a pile of stamps',
+      () => commit([set('users/$dave/stamps/wallet', purse(50, today))],
+          as: dave));
+  await deny(
+      'nor dated tomorrow to skip ahead',
+      () => commit([
+            set('users/$dave/stamps/wallet',
+                purse(2, today.add(const Duration(days: 1))))
+          ], as: dave));
+  await allow(
+      'the first wallet holds one day\'s worth',
+      () => commit([set('users/$dave/stamps/wallet', purse(2, today))],
+          as: dave));
+  await deny(
+      'and cannot be refilled again the same day',
+      () => commit([set('users/$dave/stamps/wallet', purse(4, today))],
+          as: dave));
+  await deny('nor read by anyone else',
+      () => read('users/$dave/stamps/wallet', as: bob));
+
+  // Rewind to yesterday as owner, so a refill becomes due.
+  await commit([set('users/$dave/stamps/wallet', purse(2, yesterday))],
+      as: 'owner');
+  await deny(
+      'a refill cannot hand out more than a day\'s worth',
+      () => commit([set('users/$dave/stamps/wallet', purse(9, today))],
+          as: dave));
+  await allow(
+      'a day later, a refill is due',
+      () => commit([set('users/$dave/stamps/wallet', purse(4, today))],
+          as: dave));
+
+  await commit([set('users/$dave/stamps/wallet', purse(9, yesterday))],
+      as: 'owner');
+  await deny(
+      'and it never goes past the ceiling',
+      () => commit([set('users/$dave/stamps/wallet', purse(11, today))],
+          as: dave));
+  await allow(
+      'stopping at ten',
+      () => commit([set('users/$dave/stamps/wallet', purse(10, today))],
+          as: dave));
+
+  print('');
+  print('切手を使って手紙を送る');
+  await commit([set('users/$bob/stamps/wallet', purse(1, today))],
+      as: 'owner');
+
+  await deny('spending two stamps on one letter', () {
+    final writes = stamped('l4', bob);
+    writes[0] = increment('users/$bob/stamps/wallet', 'count', -2);
+    return commit(writes, as: bob);
+  });
+  await deny('sending without paying at all',
+      () => commit(delivery('l5', bob), as: bob));
+  await allow('sending spends exactly one',
+      () => commit(stamped('l6', bob), as: bob));
+  await deny('out of stamps, the letter does not go either',
+      () => commit(stamped('l7', bob), as: bob));
+  await deny(
+      'and helping yourself to more is refused',
+      () => commit([increment('users/$bob/stamps/wallet', 'count', 5)],
+          as: bob));
 
   print('');
   print('ポスト（B22：不正が拒否されるか）');

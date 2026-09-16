@@ -5,6 +5,7 @@ import '../models/post.dart';
 import '../providers/auth_provider.dart';
 import '../providers/letter_provider.dart';
 import '../providers/post_provider.dart';
+import '../providers/stamp_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/post_slot_card.dart';
 import 'friends_screen.dart';
@@ -21,6 +22,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _busy = false;
 
   String get _uid => ref.read(authStateProvider).value!.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    // Today's stamps, handed out on the first launch of the day. Failing
+    // is harmless — the next launch tries again.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await ref.read(stampServiceProvider).ensureToday(uid: _uid);
+      } catch (e) {
+        debugPrint('Handing out stamps failed: $e');
+      }
+    });
+  }
 
   Future<void> _run(String successMessage, Future<void> Function() action) async {
     setState(() => _busy = true);

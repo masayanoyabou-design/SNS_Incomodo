@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/letter.dart';
+import '../models/stamp_wallet.dart';
 import '../models/user_profile.dart';
 import '../providers/letter_provider.dart';
+import '../providers/stamp_provider.dart';
 import '../providers/user_provider.dart';
 
 /// Write to one of your friends. You never choose a post: the letter is
@@ -69,6 +71,8 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
   @override
   Widget build(BuildContext context) {
     final friends = ref.watch(friendsProvider).value ?? const <UserProfile>[];
+    final wallet = ref.watch(stampWalletProvider).value;
+    final stamps = wallet?.count ?? 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('手紙を書く')),
@@ -78,6 +82,22 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
           if (friends.isEmpty)
             const Text('まだ友だちがいません。先に「友だち」から、IDか招待リンクでつながってください。')
           else ...[
+            Row(
+              children: [
+                const Icon(Icons.local_post_office_outlined, size: 18),
+                const SizedBox(width: 6),
+                Text('切手 $stamps枚',
+                    style: Theme.of(context).textTheme.titleSmall),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              stamps > 0
+                  ? '手紙を1通送るごとに切手を1枚使います。毎日${StampWallet.dailyRefill}枚届きます（最大${StampWallet.maxHeld}枚）。'
+                  : '切手を切らしています。明日また${StampWallet.dailyRefill}枚届きます。',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 20),
             DropdownButtonFormField<UserProfile>(
               initialValue: _to == null
                   ? null
@@ -113,11 +133,11 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
               const Center(child: CircularProgressIndicator())
             else
               FilledButton.icon(
-                onPressed: _send,
+                onPressed: stamps > 0 ? _send : null,
                 icon: const Icon(Icons.outgoing_mail),
-                label: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: Text('送る'),
+                label: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Text(stamps > 0 ? '送る' : '切手がありません'),
                 ),
               ),
           ],
