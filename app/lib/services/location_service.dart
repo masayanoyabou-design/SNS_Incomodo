@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'slow_response.dart';
+
 class LocationException implements Exception {
   const LocationException(this.message);
   final String message;
@@ -15,11 +17,20 @@ class LocationException implements Exception {
 class LocationService {
   /// Returns the device's current position, asking for permission if needed.
   Future<Position> getCurrentPosition() async {
-    if (!await Geolocator.isLocationServiceEnabled()) {
+    // These two only ask the phone, and normally answer at once. On a
+    // struggling phone they once never answered, leaving registration
+    // spinning with no way out. (Asking for permission gets no limit: that
+    // waits for the user.)
+    const settingsLimit = Duration(seconds: 10);
+    const slowSettings = '端末の位置情報の設定を確認できませんでした。少し待ってから、もう一度お試しください';
+
+    if (!await answerWithin(Geolocator.isLocationServiceEnabled(),
+        limit: settingsLimit, message: slowSettings)) {
       throw const LocationException('端末の位置情報がオフになっています。設定からオンにしてください');
     }
 
-    var permission = await Geolocator.checkPermission();
+    var permission = await answerWithin(Geolocator.checkPermission(),
+        limit: settingsLimit, message: slowSettings);
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }

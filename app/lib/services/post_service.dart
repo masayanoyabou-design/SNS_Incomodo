@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/post.dart';
+import 'slow_response.dart';
 
 /// Reads and writes a user's posts at `users/{uid}/posts/{slotId}`.
 class PostService {
@@ -25,6 +26,22 @@ class PostService {
   DocumentReference<Map<String, dynamic>> _firstPostUsed(String uid) =>
       _firestore.collection('users').doc(uid).collection('meta').doc('firstPost');
 
+  static const _readLimit = Duration(seconds: 15);
+  static const _writeLimit = Duration(seconds: 20);
+  static const _slowRead =
+      'サーバーに接続できませんでした。電波の良い場所で、もう一度お試しください';
+
+  /// A write that took too long may still land once the connection
+  /// recovers, so this says to look again rather than to redo it.
+  static const _slowWrite =
+      '通信に時間がかかっています。反映されるまで少し待ってから、ポストの一覧を確認してください';
+
+  Future<T> _read<T>(Future<T> future) =>
+      answerWithin(future, limit: _readLimit, message: _slowRead);
+
+  Future<void> _write(Future<void> future) =>
+      answerWithin(future, limit: _writeLimit, message: _slowWrite);
+
   /// Creates a post, or updates it. Moving an existing post restarts its
   /// construction period; renaming it does not.
   ///
@@ -42,10 +59,10 @@ class PostService {
     if (error != null) throw ArgumentError(error);
 
     final ref = _posts(uid).doc(slot.id);
-    final data = (await ref.get()).data();
+    final data = (await _read(ref.get())).data();
 
     if (data == null) {
-      final used = (await _firstPostUsed(uid).get()).exists;
+      final used = (await _read(_firstPostUsed(uid).get())).exists;
       final fields = {
         'name': name.trim(),
         'latitude': latitude,
@@ -54,20 +71,20 @@ class PostService {
         if (!used) 'firstPost': true,
       };
       if (used) {
-        await ref.set(fields);
+        await _write(ref.set(fields));
       } else {
-        await (_firestore.batch()
+        await _write((_firestore.batch()
               ..set(ref, fields)
               ..set(_firstPostUsed(uid),
                   {'usedAt': FieldValue.serverTimestamp()}))
-            .commit();
+            .commit());
       }
       return !used;
     }
 
     final moved =
         data['latitude'] != latitude || data['longitude'] != longitude;
-    await ref.set({
+    await _write(ref.set({
       'name': name.trim(),
       'latitude': latitude,
       'longitude': longitude,
@@ -76,12 +93,12 @@ class PostService {
           : data['constructionStartedAt'],
       // A moved post is a new place, and is built like any other.
       if (!moved && data['firstPost'] == true) 'firstPost': true,
-    });
+    }));
     return false;
   }
 
   Future<void> deletePost({required String uid, required PostSlot slot}) =>
-      _posts(uid).doc(slot.id).delete();
+      _write(_posts(uid).doc(slot.id).delete());
 
   Post _fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;

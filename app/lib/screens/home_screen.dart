@@ -7,6 +7,8 @@ import '../providers/letter_provider.dart';
 import '../providers/post_provider.dart';
 import '../providers/stamp_provider.dart';
 import '../providers/user_provider.dart';
+import '../services/location_service.dart';
+import '../services/slow_response.dart';
 import '../widgets/post_slot_card.dart';
 import 'friends_screen.dart';
 import 'letters_screen.dart';
@@ -48,7 +50,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return true;
     } catch (e) {
       debugPrint('HomeScreen action failed: $e');
-      _showMessage('失敗しました: $e');
+      // These already say what happened and what to do. A slow write in
+      // particular may still go through, so "failed" would be wrong.
+      _showMessage(e is SlowResponseException || e is LocationException
+          ? e.toString()
+          : '失敗しました: $e');
       return false;
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -108,7 +114,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _move(Post post) async {
     final ok = await _confirm(
       title: '現在地へ移設しますか？',
-      message: '「${post.name}」を現在地へ移設します。工事期間（48時間）は最初からやり直しになります。',
+      message: post.firstPost
+          ? '「${post.name}」を現在地へ移設します。移設先は、最初のポストでも48時間の工事が必要です。'
+          : '「${post.name}」を現在地へ移設します。工事期間（48時間）は最初からやり直しになります。',
       confirmLabel: '移設する',
     );
     if (!ok) return;
@@ -119,7 +127,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _delete(Post post) async {
     final ok = await _confirm(
       title: '削除しますか？',
-      message: '「${post.name}」を削除します。再登録すると工事期間（48時間）がかかります。',
+      message: post.firstPost
+          ? '「${post.name}」を削除します。最初のポストの工事なしは1回限りのため、'
+              '再登録すると工事期間（48時間）がかかります。'
+          : '「${post.name}」を削除します。再登録すると工事期間（48時間）がかかります。',
       confirmLabel: '削除する',
     );
     if (!ok) return;
