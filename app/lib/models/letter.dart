@@ -96,3 +96,19 @@ Post? openablePost({
   }
   return null;
 }
+
+/// The post you are standing at, finished or not.
+///
+/// Telling "you haven't got there yet" apart from "you are there, but it
+/// is still being built" matters: walking to a post and being told you
+/// aren't near it would just look broken.
+Post? postYouAreAt({
+  required Iterable<Post> posts,
+  required double latitude,
+  required double longitude,
+}) {
+  for (final post in posts) {
+    if (post.isWithinUnlockRadius(latitude, longitude)) return post;
+  }
+  return null;
+}

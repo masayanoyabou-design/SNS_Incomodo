@@ -18,11 +18,19 @@ class LettersScreen extends ConsumerWidget {
     final here = ref.watch(hereProvider);
     final posts = ref.watch(postsProvider).value ?? const <PostSlot, Post>{};
     final now = ref.watch(clockProvider).value ?? DateTime.now();
-    final at = here == null
+    final openable = here == null
         ? null
         : openablePost(
             posts: posts.values,
             now: now,
+            latitude: here.latitude,
+            longitude: here.longitude,
+          );
+    // Only worth mentioning when it isn't the one you can already open at.
+    final waitingAt = here == null || openable != null
+        ? null
+        : postYouAreAt(
+            posts: posts.values,
             latitude: here.latitude,
             longitude: here.longitude,
           );
@@ -60,7 +68,8 @@ class LettersScreen extends ConsumerWidget {
             _LetterList(
               letters: ref.watch(receivedLettersProvider),
               emptyMessage: 'まだ手紙は届いていません。',
-              openableAtPostName: at?.name,
+              openableAtPostName: openable?.name,
+              waitingAtPostName: waitingAt?.name,
               locationKnown: here != null,
             ),
             _LetterList(
@@ -86,12 +95,14 @@ class _LetterList extends StatelessWidget {
     required this.letters,
     required this.emptyMessage,
     this.openableAtPostName,
+    this.waitingAtPostName,
     this.locationKnown = false,
   });
 
   final AsyncValue<List<Letter>> letters;
   final String emptyMessage;
   final String? openableAtPostName;
+  final String? waitingAtPostName;
   final bool locationKnown;
 
   @override
@@ -108,6 +119,7 @@ class _LetterList extends StatelessWidget {
                   LetterCard(
                     letter: letter,
                     openableAtPostName: openableAtPostName,
+                    waitingAtPostName: waitingAtPostName,
                     locationKnown: locationKnown,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(

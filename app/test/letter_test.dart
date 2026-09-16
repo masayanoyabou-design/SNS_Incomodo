@@ -122,5 +122,27 @@ void main() {
         isNull,
       );
     });
+
+    test('postYouAreAt finds a post you reached even if it is unfinished', () {
+      // This is what tells "not there yet" apart from "there, still being
+      // built" — the two need different wording.
+      final at = postYouAreAt(
+        posts: [post('自宅', justStarted)],
+        latitude: 35.0,
+        longitude: 139.0,
+      );
+      expect(at?.name, '自宅');
+    });
+
+    test('postYouAreAt still needs you to be within the radius', () {
+      expect(
+        postYouAreAt(
+          posts: [post('自宅', justStarted)],
+          latitude: 35.1,
+          longitude: 139.0,
+        ),
+        isNull,
+      );
+    });
   });
 }

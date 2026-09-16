@@ -24,6 +24,7 @@ void main() {
     WidgetTester tester,
     Letter letter, {
     String? openableAtPostName,
+    String? waitingAtPostName,
     bool locationKnown = false,
   }) =>
       tester.pumpWidget(MaterialApp(
@@ -31,6 +32,7 @@ void main() {
           body: LetterCard(
             letter: letter,
             openableAtPostName: openableAtPostName,
+            waitingAtPostName: waitingAtPostName,
             locationKnown: locationKnown,
           ),
         ),
@@ -57,6 +59,16 @@ void main() {
     expect(find.text('後藤さんから'), findsOneWidget);
     expect(find.textContaining('未開封'), findsOneWidget);
     expect(find.textContaining('「自宅」に着いています'), findsOneWidget);
+  });
+
+  testWidgets('standing at a post still being built, it says so',
+      (tester) async {
+    // Not "you aren't near a post" — you are standing right at it.
+    await pump(tester, letter(),
+        waitingAtPostName: '自宅', locationKnown: true);
+
+    expect(find.textContaining('「自宅」に着いていますが'), findsOneWidget);
+    expect(find.textContaining('ポストの近くではありません'), findsNothing);
   });
 
   testWidgets('away from every post, it says to go there', (tester) async {

@@ -7,6 +7,7 @@ import '../models/user_profile.dart';
 import '../providers/letter_provider.dart';
 import '../providers/stamp_provider.dart';
 import '../providers/user_provider.dart';
+import 'friends_screen.dart';
 
 /// Write to one of your friends. You never choose a post: the letter is
 /// addressed to the person, and they read it at whichever of their posts
@@ -71,6 +72,8 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
   @override
   Widget build(BuildContext context) {
     final friends = ref.watch(friendsProvider).value ?? const <UserProfile>[];
+    final requests =
+        ref.watch(friendRequestsProvider).value ?? const <UserProfile>[];
     final wallet = ref.watch(stampWalletProvider).value;
     final stamps = wallet?.count ?? 0;
 
@@ -79,9 +82,24 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          if (friends.isEmpty)
-            const Text('まだ友だちがいません。先に「友だち」から、IDか招待リンクでつながってください。')
-          else ...[
+          if (friends.isEmpty) ...[
+            const Text('まだ手紙を出せる相手がいません。「友だち」から、IDか招待リンクでつながってください。'),
+            // Both sides have to accept, so a letter can't go out while a
+            // request is still sitting there unanswered.
+            if (requests.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.person_add_alt),
+                  title: Text('届いているリクエストが${requests.length}件あります'),
+                  subtitle: const Text('承認すると、その人と手紙をやり取りできます'),
+                  onTap: () => Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const FriendsScreen()),
+                  ),
+                ),
+              ),
+            ],
+          ] else ...[
             Row(
               children: [
                 const Icon(Icons.local_post_office_outlined, size: 18),

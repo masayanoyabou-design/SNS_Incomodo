@@ -21,6 +21,7 @@ class LetterCard extends StatelessWidget {
     super.key,
     required this.letter,
     this.openableAtPostName,
+    this.waitingAtPostName,
     this.locationKnown = false,
     this.onTap,
   });
@@ -29,6 +30,9 @@ class LetterCard extends StatelessWidget {
 
   /// The post the reader is standing at, when they can open this letter.
   final String? openableAtPostName;
+
+  /// The post they are standing at that is still under construction.
+  final String? waitingAtPostName;
 
   /// Whether the reader has checked where they are at all.
   final bool locationKnown;
@@ -47,6 +51,9 @@ class LetterCard extends StatelessWidget {
     if (openableAtPostName != null) {
       return '「$openableAtPostName」に着いています。ここで開けます';
     }
+    if (waitingAtPostName != null) {
+      return '「$waitingAtPostName」に着いていますが、工事が終わるまで開けません';
+    }
     return locationKnown
         ? 'ポストの近くではありません。ポストまで行くと開けられます'
         : '現在地を確認すると、ここで開けるか分かります';
@@ -61,7 +68,8 @@ class LetterCard extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: Icon(
-          _isSealed ? Icons.mail_outline : Icons.drafts_outlined,
+          // Sealed until the recipient opens it, whichever side you are on.
+          letter.isOpened ? Icons.drafts_outlined : Icons.mail_outline,
           color: canOpenNow ? Theme.of(context).colorScheme.primary : null,
         ),
         title: Text(_title),

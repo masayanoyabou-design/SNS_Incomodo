@@ -83,11 +83,18 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
     final here = ref.watch(hereProvider);
     final posts = ref.watch(postsProvider).value ?? const <PostSlot, Post>{};
     final now = ref.watch(clockProvider).value ?? DateTime.now();
-    final at = here == null
+    final openable = here == null
         ? null
         : openablePost(
             posts: posts.values,
             now: now,
+            latitude: here.latitude,
+            longitude: here.longitude,
+          );
+    final waitingAt = here == null || openable != null
+        ? null
+        : postYouAreAt(
+            posts: posts.values,
             latitude: here.latitude,
             longitude: here.longitude,
           );
@@ -109,10 +116,9 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
             Text('消印：${formatStamp(_letter.openedAt!)}'),
           const SizedBox(height: 24),
           if (sealed)
-            _sealed(context, at)
+            _sealed(context, openable, waitingAt, now)
           else
-            _paper(context)
-          ,
+            _paper(context),
           if (_busy) ...[
             const SizedBox(height: 24),
             const Center(child: CircularProgressIndicator()),
@@ -122,24 +128,28 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
     );
   }
 
-  Widget _sealed(BuildContext context, Post? at) {
+  Widget _sealed(
+      BuildContext context, Post? openable, Post? waitingAt, DateTime now) {
     return Column(
       children: [
         Icon(Icons.mail_outline,
             size: 72, color: Theme.of(context).colorScheme.outline),
         const SizedBox(height: 16),
         Text(
-          at != null
-              ? '「${at.name}」に着いています。ここで開けます。'
-              : ref.watch(hereProvider) == null
-                  ? 'この手紙は、あなたのポストの前でしか開けません。'
-                  : 'まだポストの近くではありません。ポストまで行くと開けられます。',
+          switch ((openable, waitingAt)) {
+            (final Post at, _) => '「${at.name}」に着いています。ここで開けます。',
+            (_, final Post at) => '「${at.name}」に着いていますが、まだ工事中です。'
+                '${_remaining(at, now)}に開けられるようになります。',
+            _ => ref.watch(hereProvider) == null
+                ? 'この手紙は、あなたのポストの前でしか開けません。'
+                : 'まだポストの近くではありません。ポストまで行くと開けられます。',
+          },
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
-        if (at != null)
+        if (openable != null)
           FilledButton.icon(
-            onPressed: _busy ? null : () => _open(at),
+            onPressed: _busy ? null : () => _open(openable),
             icon: const Icon(Icons.drafts_outlined),
             label: const Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
@@ -156,6 +166,14 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
           ),
       ],
     );
+  }
+
+  /// "あと3時間20分" — the same wording the post card uses.
+  String _remaining(Post post, DateTime now) {
+    final left = post.remainingConstruction(now);
+    final hours = left.inHours;
+    final minutes = left.inMinutes % 60;
+    return hours > 0 ? 'あと$hours時間$minutes分' : 'あと$minutes分';
   }
 
   Widget _paper(BuildContext context) {

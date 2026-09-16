@@ -52,6 +52,7 @@ void main() {
     List<Letter> received = const [],
     List<Letter> sent = const [],
     List<UserProfile> friends = const [],
+    List<UserProfile> requests = const [],
     Map<PostSlot, Post> posts = const {},
     ({double latitude, double longitude})? here,
     LetterService? letters,
@@ -62,6 +63,7 @@ void main() {
           authStateProvider.overrideWith((ref) => Stream.value(_FakeUser())),
           myProfileProvider.overrideWith((ref) => Stream.value(me)),
           friendsProvider.overrideWith((ref) => Stream.value(friends)),
+          friendRequestsProvider.overrideWith((ref) => Stream.value(requests)),
           receivedLettersProvider.overrideWith((ref) => Stream.value(received)),
           sentLettersProvider.overrideWith((ref) => Stream.value(sent)),
           postsProvider.overrideWith((ref) => Stream.value(posts)),
@@ -177,7 +179,20 @@ void main() {
       await tester.pumpWidget(app(const WriteLetterScreen()));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('まだ友だちがいません'), findsOneWidget);
+      expect(find.textContaining('まだ手紙を出せる相手がいません'), findsOneWidget);
+    });
+
+    testWidgets('an unanswered request is why you cannot write yet',
+        (tester) async {
+      // Accepting is mutual: the other person accepting you is not enough,
+      // and without this the screen just says you have no friends.
+      await tester.pumpWidget(app(
+        const WriteLetterScreen(),
+        requests: [friend],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('届いているリクエストが1件'), findsOneWidget);
     });
 
     testWidgets('an empty letter is refused', (tester) async {

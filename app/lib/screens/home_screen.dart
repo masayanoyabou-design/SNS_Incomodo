@@ -187,6 +187,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final now = ref.watch(clockProvider).value ?? DateTime.now();
     final here = ref.watch(hereProvider);
     final unopened = ref.watch(unopenedCountProvider);
+    final requests = ref.watch(friendRequestsProvider).value?.length ?? 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -206,7 +207,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           IconButton(
             tooltip: '友だち',
-            icon: const Icon(Icons.people_outline),
+            // Until you answer a request, you can't write to that person,
+            // so it needs to be visible from here.
+            icon: Badge.count(
+              count: requests,
+              isLabelVisible: requests > 0,
+              child: const Icon(Icons.people_outline),
+            ),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const FriendsScreen()),
             ),
