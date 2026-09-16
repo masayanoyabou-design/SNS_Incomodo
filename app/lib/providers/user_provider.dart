@@ -21,8 +21,11 @@ final friendsProvider = StreamProvider<List<UserProfile>>((ref) {
   return ref.watch(userServiceProvider).watchFriends(user.uid);
 });
 
+/// Requests waiting for an answer, leaving out anyone already a friend.
 final friendRequestsProvider = StreamProvider<List<UserProfile>>((ref) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return Stream.value(const []);
-  return ref.watch(userServiceProvider).watchFriendRequests(user.uid);
+  final friends = ref.watch(friendsProvider).value ?? const <UserProfile>[];
+  return ref.watch(userServiceProvider).watchFriendRequests(user.uid).map(
+      (requests) => unansweredRequests(requests: requests, friends: friends));
 });

@@ -396,6 +396,51 @@ Future<void> main() async {
             set('users/$alice',
                 {'displayName': str('アリス改'), 'handle': str('alice')})
           ], as: alice));
+  print('');
+  print('友だちリクエスト');
+  Map<String, Object> request({bool? reply, Map<String, Object> extra = const {}}) =>
+      {
+        'displayName': str('キャロル'),
+        'handle': str('carol'),
+        if (reply != null) 'reply': {'booleanValue': reply},
+        ...extra,
+      };
+  await allow(
+      'asking someone to connect',
+      () => commit([
+            set('users/$alice/friendRequests/$carol', request(),
+                serverTimestamps: ['createdAt'])
+          ], as: carol));
+  await allow(
+      'the request sent back on accepting is marked as a reply',
+      () => commit([
+            set('users/$carol/friendRequests/$alice',
+                request(reply: true)..['handle'] = str('alice'),
+                serverTimestamps: ['createdAt'])
+          ], as: alice));
+  await deny(
+      'a request cannot be sent in someone else\'s name',
+      () => commit([
+            set('users/$alice/friendRequests/$bob', request(),
+                serverTimestamps: ['createdAt'])
+          ], as: carol));
+  await deny(
+      'nor carry anything but who is asking',
+      () => commit([
+            set('users/$alice/friendRequests/$carol',
+                request(extra: {'friendOf': str(alice)}),
+                serverTimestamps: ['createdAt'])
+          ], as: carol));
+  await deny(
+      'reply has to be a yes or a no',
+      () => commit([
+            set('users/$alice/friendRequests/$carol',
+                request(extra: {'reply': str('yes')}),
+                serverTimestamps: ['createdAt'])
+          ], as: carol));
+  await deny('and only the recipient can read them',
+      () => read('users/$alice/friendRequests/$carol', as: bob));
+
   await deny(
       'adding yourself to someone else\'s friends',
       () => commit([

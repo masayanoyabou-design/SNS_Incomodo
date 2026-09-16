@@ -8,6 +8,7 @@ import 'providers/user_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_setup_screen.dart';
+import 'theme/incomodo_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +23,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Incomodo',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.brown)),
+      theme: buildIncomodoTheme(),
       home: const AuthGate(),
     );
   }

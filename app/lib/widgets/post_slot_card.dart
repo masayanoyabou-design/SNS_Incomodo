@@ -46,7 +46,8 @@ class PostSlotCard extends StatelessWidget {
       children: [
         Expanded(
           child: Text('${slot.label}（未登録）',
-              style: TextStyle(color: Theme.of(context).disabledColor)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ),
         FilledButton.tonal(
           onPressed: busy ? null : onRegister,
@@ -57,6 +58,7 @@ class PostSlotCard extends StatelessWidget {
   }
 
   Widget _buildPost(BuildContext context, Post post) {
+    final scheme = Theme.of(context).colorScheme;
     final active = post.isActive(now);
     return Row(
       children: [
@@ -72,7 +74,7 @@ class PostSlotCard extends StatelessWidget {
                     ? '稼働中'
                     : '工事中（あと${_formatRemaining(post.remainingConstruction(now))}）',
                 style: TextStyle(
-                  color: active ? Colors.green.shade700 : Colors.orange.shade800,
+                  color: active ? scheme.tertiary : scheme.secondary,
                 ),
               ),
               if (distanceMeters != null) _buildDistance(context, post),
@@ -93,6 +95,7 @@ class PostSlotCard extends StatelessWidget {
   }
 
   Widget _buildDistance(BuildContext context, Post post) {
+    final scheme = Theme.of(context).colorScheme;
     final distance = distanceMeters!;
     final arrived = distance <= Post.unlockRadiusMeters;
     final canOpen = arrived && post.isActive(now);
@@ -104,7 +107,7 @@ class PostSlotCard extends StatelessWidget {
             arrived ? Icons.where_to_vote : Icons.directions_walk,
             size: 16,
             color: canOpen
-                ? Colors.green.shade700
+                ? scheme.tertiary
                 : Theme.of(context).textTheme.bodySmall?.color,
           ),
           const SizedBox(width: 4),
@@ -116,7 +119,7 @@ class PostSlotCard extends StatelessWidget {
                       ? 'ポストに到着（工事が終わるまで開けません）'
                       : '現在地から約${_formatDistance(distance)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: canOpen ? Colors.green.shade700 : null,
+                    color: canOpen ? scheme.tertiary : null,
                     fontWeight: canOpen ? FontWeight.bold : null,
                   ),
             ),

@@ -7,6 +7,8 @@ import '../providers/auth_provider.dart';
 import '../providers/letter_provider.dart';
 import '../providers/post_provider.dart';
 import '../widgets/letter_card.dart';
+import '../widgets/letter_paper.dart';
+import '../widgets/postmark.dart';
 
 /// One letter. A received letter stays sealed — its text isn't even on
 /// the phone — until you are standing at one of your finished posts.
@@ -180,17 +182,10 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
     if (_body == null && !_busy) {
       return const Text('本文を読み込めませんでした。通信状況を確かめて、開き直してください。');
     }
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: SelectableText(
-        _body ?? '',
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.9),
-      ),
+    final opened = _letter.openedAt;
+    return LetterPaper(
+      body: _body ?? '',
+      postmark: opened == null ? null : Postmark(date: opened),
     );
   }
 }

@@ -46,9 +46,17 @@ service cloud.firestore {
     match /users/{uid}/friendRequests/{fromUid} {
       allow read, delete: if signedInAs(uid);
       // Update is allowed too, so re-sending a request just refreshes it.
+      //
+      // `reply` marks the request sent back on accepting one, so that
+      // accepting it doesn't send another. A sender can set it falsely,
+      // but all that does is skip the automatic request back to them.
       allow create, update: if request.auth != null
         && fromUid == request.auth.uid
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.keys()
+            .hasOnly(['displayName', 'handle', 'createdAt', 'reply'])
+        && request.resource.data.createdAt == request.time
+        && (!('reply' in request.resource.data)
+            || request.resource.data.reply is bool);
     }
 
     // Stamps (PRD F-05). Sending costs one, a couple arrive each day, and

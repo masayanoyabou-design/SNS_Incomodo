@@ -67,4 +67,23 @@ void main() {
         UserProfile(uid: 'u1', displayName: '後藤', handle: 'goto_01');
     expect(profile.handleWithAt, '@goto_01');
   });
+
+  group('unansweredRequests', () {
+    const goto = UserProfile(uid: 'u1', displayName: '後藤', handle: 'goto');
+    const sato = UserProfile(uid: 'u2', displayName: '佐藤', handle: 'sato');
+
+    test('a request from someone new is waiting for an answer', () {
+      expect(unansweredRequests(requests: [goto], friends: const []), [goto]);
+    });
+
+    test('a request from someone already a friend is not', () {
+      // Found on the emulator: accepting used to send a request back even
+      // when the other person had already accepted, so a friend showed up
+      // as a request again.
+      expect(
+        unansweredRequests(requests: [goto, sato], friends: [goto]),
+        [sato],
+      );
+    });
+  });
 }

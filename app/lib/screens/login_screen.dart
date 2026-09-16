@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
+import '../widgets/postmark.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -30,35 +31,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Postmark(date: DateTime.now(), size: 96),
+              const SizedBox(height: 28),
+              Text(
                 'Incomodo',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
               ),
-              const SizedBox(height: 8),
-              const Text('行かなきゃ、読めない。'),
-              const SizedBox(height: 40),
+              const SizedBox(height: 4),
+              Text(
+                'インコモード',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.secondary,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('行かなきゃ、読めない。', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 48),
               if (_isSigningIn)
                 const CircularProgressIndicator()
               else
-                ElevatedButton(
-                  onPressed: _handleGoogleSignIn,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    child: Text('Googleでログイン'),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _handleGoogleSignIn,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      child: Text('Googleでログイン'),
+                    ),
                   ),
                 ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 16),
                 Text(
                   _errorMessage!,
-                  style: const TextStyle(color: Colors.red),
+                  style: TextStyle(color: theme.colorScheme.error),
                   textAlign: TextAlign.center,
                 ),
               ],

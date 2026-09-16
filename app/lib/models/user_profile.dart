@@ -42,3 +42,17 @@ class UserProfile {
   static String normalizeHandle(String value) =>
       value.trim().replaceFirst(RegExp('^@'), '').toLowerCase();
 }
+
+/// The requests still worth answering. One from someone already on your
+/// list would only add them again — and one can be left over from before
+/// accepting stopped sending requests back forever.
+List<UserProfile> unansweredRequests({
+  required List<UserProfile> requests,
+  required List<UserProfile> friends,
+}) {
+  final friendIds = {for (final friend in friends) friend.uid};
+  return [
+    for (final request in requests)
+      if (!friendIds.contains(request.uid)) request,
+  ];
+}

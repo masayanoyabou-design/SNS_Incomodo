@@ -74,14 +74,19 @@ class UserService {
   }
 
   /// Asks [target] to connect. They see it in their requests and accept.
+  ///
+  /// [reply] marks the request sent back automatically on accepting one,
+  /// so that accepting *that* doesn't send yet another back.
   Future<void> sendFriendRequest({
     required UserProfile from,
     required String targetUid,
+    bool reply = false,
   }) =>
       _user(targetUid).collection('friendRequests').doc(from.uid).set({
         'displayName': from.displayName,
         'handle': from.handle,
         'createdAt': FieldValue.serverTimestamp(),
+        'reply': reply,
       });
 
   Stream<List<UserProfile>> watchFriendRequests(String uid) => _user(uid)
@@ -96,17 +101,27 @@ class UserService {
 
   /// Accepting adds them to my friends (letting them write to me) and asks
   /// them back, so letters can flow both ways once they accept too.
+  ///
+  /// Only an original request is answered with one of our own. If this
+  /// was already the answer to ours, they have accepted us and asking
+  /// again would bounce requests back and forth forever.
   Future<void> acceptFriendRequest({
     required UserProfile me,
     required UserProfile requester,
   }) async {
+    final requestRef =
+        _user(me.uid).collection('friendRequests').doc(requester.uid);
+    final wasReply = (await requestRef.get()).data()?['reply'] == true;
+
     await _user(me.uid).collection('friends').doc(requester.uid).set({
       'displayName': requester.displayName,
       'handle': requester.handle,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    await _user(me.uid).collection('friendRequests').doc(requester.uid).delete();
-    await sendFriendRequest(from: me, targetUid: requester.uid);
+    await requestRef.delete();
+    if (!wasReply) {
+      await sendFriendRequest(from: me, targetUid: requester.uid, reply: true);
+    }
   }
 
   Future<void> declineFriendRequest({

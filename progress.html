@@ -232,7 +232,7 @@
     <div class="stat">
       <span class="label">アプリ開発</span>
       <h3>Flutter + Firebase</h3>
-      <span class="pill progress">手紙・切手まで完了</span>
+      <span class="pill progress">残りはボイスメッセージのみ</span>
     </div>
   </section>
 
@@ -306,7 +306,7 @@
           <li><input type="checkbox" id="p3-3c" checked><label for="p3-3c">手紙の送受信（テキスト・配送/受取ステータス）</label></li>
           <li><input type="checkbox" id="p3-6" checked><label for="p3-6">切手システム（毎日の無料配布・送信時に消費）</label></li>
           <li><input type="checkbox" id="p3-4"><label for="p3-4">ボイスメッセージ録音・圧縮・送信機能</label></li>
-          <li><input type="checkbox" id="p3-5"><label for="p3-5">UIのクラフト紙風デザイン適用</label></li>
+          <li><input type="checkbox" id="p3-5" checked><label for="p3-5">UIのクラフト紙風デザイン適用</label></li>
         </ul>
       </div>
 
@@ -552,6 +552,15 @@
         <div class="issue-body">
           <p>50m以内の判定をサーバー側で強制できない</p>
           <p class="why">Firestoreのセキュリティルールは位置情報を検証できないため、距離の判定はアプリ側のみ。ただし手紙の本文は封筒と別のドキュメントに分け、開封済みになるまでサーバーが渡さないようにしたので（P3-3C）、「届いた手紙の中身がスマホに先に降りてきている」状態は解消済み。残るのは位置を偽装した場合だけで、MVPでは許容する（損なわれるのは本人の体験だけで、他人に実害がないため）。厳密にするならCloud Functions（Blazeプラン必須）での検証が必要。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i28">
+        <div class="issue-body">
+          <p>消印に「開封した場所」が入らない／手紙のアルバムがない</p>
+          <p class="why">開封した手紙には日付入りの消印が押されるようになったが（P3-5）、要件定義F-03の「消印（開封日・場所）」のうち場所は記録していない。開封時にポスト名を保存するには、開封時に書き換えてよい項目をルールで増やす必要がある。開封した手紙を並べて振り返るアルバム（コレクション機能）も未実装。</p>
         </div>
         <span class="tag future">検討中</span>
       </div>
