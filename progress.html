@@ -232,7 +232,7 @@
     <div class="stat">
       <span class="label">アプリ開発</span>
       <h3>Flutter + Firebase</h3>
-      <span class="pill progress">ポスト登録まで完了</span>
+      <span class="pill progress">50m判定まで完了</span>
     </div>
   </section>
 
@@ -301,7 +301,7 @@
           <li><input type="checkbox" id="p3-1" checked><label for="p3-1">開発環境構築（Flutter + Firebase）</label></li>
           <li><input type="checkbox" id="p3-2" checked><label for="p3-2">ユーザー認証（Googleログイン）</label></li>
           <li><input type="checkbox" id="p3-2b" checked><label for="p3-2b">ポスト登録機能（最大4箇所・48時間の工事期間）</label></li>
-          <li><input type="checkbox" id="p3-3"><label for="p3-3">GPS連動の開封判定ロジック実装</label></li>
+          <li><input type="checkbox" id="p3-3" checked><label for="p3-3">GPS連動の開封判定ロジック実装</label></li>
           <li><input type="checkbox" id="p3-4"><label for="p3-4">ボイスメッセージ録音・圧縮・送信機能</label></li>
           <li><input type="checkbox" id="p3-5"><label for="p3-5">UIのクラフト紙風デザイン適用</label></li>
         </ul>
@@ -531,6 +531,15 @@
         <div class="issue-body">
           <p>特定商取引法に基づく表記が未作成</p>
           <p class="why">現在の事前登録は無料だが、切手の課金販売（F-05）を開始する際には表記が必須になる。マネタイズ開始前に準備すればよい。</p>
+        </div>
+        <span class="tag future">検討中</span>
+      </div>
+
+      <div class="issue">
+        <input type="checkbox" id="i23">
+        <div class="issue-body">
+          <p>50m以内の判定をサーバー側で強制できない</p>
+          <p class="why">Firestoreのセキュリティルールは位置情報を検証できないため、距離の判定はアプリ側のみ。MVPでは許容する（位置を偽装しても損なわれるのは本人の体験だけで、他人に実害がないため）。厳密にするならCloud Functions（Blazeプラン必須）での検証が必要。</p>
         </div>
         <span class="tag future">検討中</span>
       </div>
