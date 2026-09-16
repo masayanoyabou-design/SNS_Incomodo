@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/letter.dart';
 import '../models/stamp_design.dart';
+import '../models/stationery.dart';
 import '../models/user_profile.dart';
 import 'stamp_service.dart';
 
@@ -33,11 +34,17 @@ class LetterService {
   ///
   /// The stamp is spent in the same batch: out of stamps means the whole
   /// thing is refused, so a letter can never go out unpaid.
+  ///
+  /// The stamp and envelope go on the envelope document, which the
+  /// recipient sees straight away. The paper goes with the text, which
+  /// they don't get until they open it.
   Future<void> sendLetter({
     required UserProfile from,
     required UserProfile to,
     required String body,
     required StampDesign stamp,
+    required EnvelopeDesign envelope,
+    required PaperDesign paper,
   }) async {
     final error = Letter.validateBody(body);
     if (error != null) throw ArgumentError(error);
@@ -52,15 +59,18 @@ class LetterService {
             'fromDisplayName': from.displayName,
             'fromHandle': from.handle,
             'stampId': stamp.id,
+            'envelopeId': envelope.id,
             'sentAt': FieldValue.serverTimestamp(),
             'openedAt': null,
           })
-          ..set(_body(to.uid, id), {'body': trimmed})
+          ..set(_body(to.uid, id), {'body': trimmed, 'paperId': paper.id})
           ..set(_sent(from.uid).doc(id), {
             'toUid': to.uid,
             'toDisplayName': to.displayName,
             'toHandle': to.handle,
             'stampId': stamp.id,
+            'envelopeId': envelope.id,
+            'paperId': paper.id,
             'body': trimmed,
             'sentAt': FieldValue.serverTimestamp(),
             'openedAt': null,
@@ -94,10 +104,20 @@ class LetterService {
                 {'openedAt': FieldValue.serverTimestamp()}))
           .commit();
 
-  /// Fetches the text of a received letter. The server only answers once
-  /// the letter has been opened.
-  Future<String?> readBody({required String uid, required String letterId}) =>
-      _body(uid, letterId).get().then((doc) => doc.data()?['body'] as String?);
+  /// Fetches what is inside a received letter: its text and the paper it is
+  /// written on. The server only answers once the letter has been opened.
+  Future<({String body, String paperId})?> readContents({
+    required String uid,
+    required String letterId,
+  }) async {
+    final data = (await _body(uid, letterId).get()).data();
+    final body = data?['body'] as String?;
+    if (body == null) return null;
+    return (
+      body: body,
+      paperId: data?['paperId'] as String? ?? PaperDesign.defaultId,
+    );
+  }
 
   Letter _toLetter(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -118,6 +138,10 @@ class LetterService {
       openedAt: openedAt?.toDate(),
       body: data['body'] as String?,
       stampId: data['stampId'] as String? ?? StampDesign.defaultId,
+      envelopeId: data['envelopeId'] as String? ?? EnvelopeDesign.defaultId,
+      // Only the sender's copy has it; a received letter learns its paper
+      // from readContents once opened.
+      paperId: data['paperId'] as String? ?? PaperDesign.defaultId,
     );
   }
 }

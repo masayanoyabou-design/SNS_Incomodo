@@ -1,5 +1,6 @@
 import 'post.dart';
 import 'stamp_design.dart';
+import 'stationery.dart';
 
 /// Whose side of a letter we are looking at.
 enum LetterDirection { received, sent }
@@ -25,6 +26,8 @@ class Letter {
     this.openedAt,
     this.body,
     this.stampId = StampDesign.defaultId,
+    this.envelopeId = EnvelopeDesign.defaultId,
+    this.paperId = PaperDesign.defaultId,
   });
 
   static const maxBodyLength = 1000;
@@ -53,25 +56,52 @@ class Letter {
 
   StampDesign get stamp => StampDesign.byId(stampId);
 
+  /// The envelope — like the stamp, visible before opening.
+  final String envelopeId;
+
+  EnvelopeDesign get envelope => EnvelopeDesign.byId(envelopeId);
+
+  /// The paper it is written on. For a received letter this, like [body],
+  /// is only known once the letter has been opened and its contents
+  /// fetched; until then it is the default.
+  final String paperId;
+
+  PaperDesign get paper => PaperDesign.byId(paperId);
+
   bool get isOpened => openedAt != null;
 
   String get counterpartHandleWithAt => '@$counterpartHandle';
 
-  Letter withBody(String? body) => _copy(body: body, openedAt: openedAt);
+  Letter withBody(String? body) => _copy(body: body);
 
-  Letter markOpened(DateTime at) => _copy(body: body, openedAt: at);
+  /// The inside of an opened letter: its text and the paper it is on.
+  Letter withContents({required String body, required String paperId}) =>
+      _copy(body: body, paperId: paperId);
 
-  Letter _copy({required String? body, required DateTime? openedAt}) => Letter(
+  Letter markOpened(DateTime at) => _copy(openedAt: at);
+
+  /// Every field copied in one place, so adding one can't be forgotten in
+  /// a copy — as happened once with the stamp being reset on opening.
+  Letter _copy({
+    Object? body = _keep,
+    Object? openedAt = _keep,
+    String? paperId,
+  }) =>
+      Letter(
         id: id,
         direction: direction,
         counterpartUid: counterpartUid,
         counterpartDisplayName: counterpartDisplayName,
         counterpartHandle: counterpartHandle,
         sentAt: sentAt,
-        openedAt: openedAt,
-        body: body,
+        openedAt: identical(openedAt, _keep) ? this.openedAt : openedAt as DateTime?,
+        body: identical(body, _keep) ? this.body : body as String?,
         stampId: stampId,
+        envelopeId: envelopeId,
+        paperId: paperId ?? this.paperId,
       );
+
+  static const _keep = Object();
 
   /// The wording the PRD asks for: a sender sees delivery, then receipt.
   String get statusLabel => switch ((direction, isOpened)) {

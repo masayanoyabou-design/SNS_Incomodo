@@ -6,6 +6,7 @@ import 'package:incomodo/models/letter.dart';
 import 'package:incomodo/models/post.dart';
 import 'package:incomodo/models/stamp_design.dart';
 import 'package:incomodo/models/stamp_wallet.dart';
+import 'package:incomodo/models/stationery.dart';
 import 'package:incomodo/models/user_profile.dart';
 import 'package:incomodo/providers/auth_provider.dart';
 import 'package:incomodo/providers/letter_provider.dart';
@@ -16,6 +17,7 @@ import 'package:incomodo/screens/letter_screen.dart';
 import 'package:incomodo/screens/letters_screen.dart';
 import 'package:incomodo/screens/write_letter_screen.dart';
 import 'package:incomodo/services/letter_service.dart';
+import 'package:incomodo/widgets/envelope_view.dart';
 import 'package:incomodo/widgets/stamp_view.dart';
 
 /// The letter screens wired to fakes, so the whole path — list, open,
@@ -151,6 +153,7 @@ void main() {
             (w) => w is StampView && w.design == StampDesign.yoru),
         findsOneWidget,
       );
+      expect(find.byType(EnvelopeView), findsOneWidget);
       expect(find.text('差出人'), findsOneWidget);
     });
 
@@ -254,6 +257,7 @@ void main() {
       expect(service.sent, [('me', 'u2', '駅前のカフェで待ってる')]);
       // Nothing chosen: the ordinary stamp.
       expect(service.stamps, ['basic']);
+      expect(service.stationery, [('plain', 'ruled')]);
     });
 
     testWidgets('the stamp you pick is the one stuck on the letter',
@@ -286,6 +290,22 @@ void main() {
       for (final design in StampDesign.free) {
         expect(find.text(design.name), findsOneWidget);
       }
+    });
+
+    testWidgets('with one envelope and one paper, there is nothing to pick',
+        (tester) async {
+      // Only one of each exists for now. The pickers are on the screen
+      // already and appear by themselves once a second design is added.
+      await tester.pumpWidget(app(
+        const WriteLetterScreen(to: friend),
+        friends: [friend],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(EnvelopeDesign.free, hasLength(1));
+      expect(PaperDesign.free, hasLength(1));
+      expect(find.text('封筒'), findsNothing);
+      expect(find.text('便箋'), findsNothing);
     });
 
     testWidgets('how many stamps are left is on the page', (tester) async {
@@ -368,6 +388,7 @@ class _FakeLetterService implements LetterService {
   final String body;
   final sent = <(String, String, String)>[];
   final stamps = <String>[];
+  final stationery = <(String envelope, String paper)>[];
   final opened = <String>[];
 
   @override
@@ -376,11 +397,14 @@ class _FakeLetterService implements LetterService {
     required UserProfile to,
     required String body,
     required StampDesign stamp,
+    required EnvelopeDesign envelope,
+    required PaperDesign paper,
   }) async {
     final error = Letter.validateBody(body);
     if (error != null) throw ArgumentError(error);
     sent.add((from.uid, to.uid, body.trim()));
     stamps.add(stamp.id);
+    stationery.add((envelope.id, paper.id));
   }
 
   @override
@@ -388,8 +412,11 @@ class _FakeLetterService implements LetterService {
       opened.add(letter.id);
 
   @override
-  Future<String?> readBody({required String uid, required String letterId}) async =>
-      body;
+  Future<({String body, String paperId})?> readContents({
+    required String uid,
+    required String letterId,
+  }) async =>
+      (body: body, paperId: PaperDesign.defaultId);
 
   @override
   Stream<List<Letter>> watchReceived(String uid) => const Stream.empty();

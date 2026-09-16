@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:incomodo/models/letter.dart';
@@ -8,11 +6,6 @@ import 'package:incomodo/theme/stamp_art.dart';
 import 'package:incomodo/widgets/stamp_view.dart';
 
 void main() {
-  test('every design has its own id', () {
-    final ids = StampDesign.free.map((d) => d.id).toList();
-    expect(ids.toSet(), hasLength(ids.length));
-  });
-
   test('the ordinary stamp is the default', () {
     expect(StampDesign.byId(StampDesign.defaultId), StampDesign.basic);
     expect(StampDesign.free, contains(StampDesign.basic));
@@ -27,28 +20,10 @@ void main() {
 
   test('every free design has artwork of its own', () {
     for (final design in StampDesign.free) {
-      final art = StampArt.of(design);
-      if (design != StampDesign.basic) {
-        expect(art, isNot(same(StampArt.of(StampDesign.basic))),
-            reason: '${design.id} is drawn as the ordinary stamp');
-      }
+      if (design == StampDesign.basic) continue;
+      expect(StampArt.of(design), isNot(same(StampArt.of(StampDesign.basic))),
+          reason: '${design.id} is drawn as the ordinary stamp');
     }
-  });
-
-  test('firestore.rules allows exactly the free designs', () {
-    // The rules keep their own copy of the list. If the two drift apart,
-    // either a design can't be sent, or one nobody was given can be.
-    final rules = File('firestore.rules').readAsStringSync();
-    final match =
-        RegExp(r"function freeStamp\(id\)\s*\{\s*return id in \[([^\]]*)\]")
-            .firstMatch(rules);
-    expect(match, isNotNull, reason: 'freeStamp() not found in the rules');
-
-    final inRules = RegExp(r"'([^']+)'")
-        .allMatches(match!.group(1)!)
-        .map((m) => m.group(1))
-        .toSet();
-    expect(inRules, StampDesign.free.map((d) => d.id).toSet());
   });
 
   test('opening a letter keeps its stamp', () {
@@ -76,22 +51,5 @@ void main() {
 
     expect(find.bySemanticsLabel('桜の切手'), findsOneWidget);
     semantics.dispose();
-  });
-
-  testWidgets('the picker marks the chosen stamp and reports taps',
-      (tester) async {
-    StampDesign? picked;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: StampPicker(
-          designs: StampDesign.free,
-          selected: StampDesign.basic,
-          onSelected: (d) => picked = d,
-        ),
-      ),
-    ));
-
-    await tester.tap(find.text('青空'));
-    expect(picked, StampDesign.aozora);
   });
 }

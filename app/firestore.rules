@@ -105,22 +105,32 @@ service cloud.firestore {
     // Note: the rules cannot check that the reader is standing at a post
     // — location isn't available here. That 50m rule lives in the app
     // (see MANUAL 15 and backlog B23).
-    // The stamp designs anyone may stick on a letter. Mirrors
-    // StampDesign.free in lib/models/stamp_design.dart (stamp_design_test
-    // checks they match). A design that isn't here — a future paid one —
-    // is refused until entitlement to it can be checked.
+    // The stationery anyone may use: stamps, envelopes and paper. Each list
+    // mirrors `free` on StampDesign / EnvelopeDesign / PaperDesign in
+    // lib/models (stationery_test checks they match). A design that isn't
+    // here — a future paid one — is refused until entitlement to it can be
+    // checked.
     function freeStamp(id) {
       return id in ['basic', 'sakura', 'aozora', 'yoru', 'konoha'];
+    }
+
+    function freeEnvelope(id) {
+      return id in ['plain'];
+    }
+
+    function freePaper(id) {
+      return id in ['ruled'];
     }
 
     match /users/{uid}/letters/{letterId} {
       function validLetter() {
         let d = request.resource.data;
         return d.keys().hasOnly(['fromUid', 'fromDisplayName', 'fromHandle',
-            'stampId', 'sentAt', 'openedAt'])
+            'stampId', 'envelopeId', 'sentAt', 'openedAt'])
           && d.keys().hasAll(['fromUid', 'fromDisplayName', 'fromHandle',
-            'stampId', 'sentAt', 'openedAt'])
+            'stampId', 'envelopeId', 'sentAt', 'openedAt'])
           && freeStamp(d.stampId)
+          && freeEnvelope(d.envelopeId)
           && d.fromUid == request.auth.uid
           && d.fromDisplayName is string && d.fromDisplayName.size() <= 20
           && d.fromHandle is string
@@ -159,9 +169,13 @@ service cloud.firestore {
         allow read: if signedInAs(uid)
           && get(/databases/$(database)/documents/users/$(uid)/letters/$(letterId))
               .data.openedAt != null;
+        // The paper travels with the text, so it too stays hidden until
+        // the letter is opened.
         allow create: if request.auth != null
           && part == 'body'
-          && request.resource.data.keys().hasOnly(['body'])
+          && request.resource.data.keys().hasOnly(['body', 'paperId'])
+          && request.resource.data.keys().hasAll(['body', 'paperId'])
+          && freePaper(request.resource.data.paperId)
           && request.resource.data.body is string
           && request.resource.data.body.size() > 0
           && request.resource.data.body.size() <= 1000
@@ -178,10 +192,12 @@ service cloud.firestore {
       function validCopy() {
         let d = request.resource.data;
         return d.keys().hasOnly(['toUid', 'toDisplayName', 'toHandle',
-            'stampId', 'body', 'sentAt', 'openedAt'])
+            'stampId', 'envelopeId', 'paperId', 'body', 'sentAt', 'openedAt'])
           && d.keys().hasAll(['toUid', 'toDisplayName', 'toHandle',
-            'stampId', 'body', 'sentAt', 'openedAt'])
+            'stampId', 'envelopeId', 'paperId', 'body', 'sentAt', 'openedAt'])
           && freeStamp(d.stampId)
+          && freeEnvelope(d.envelopeId)
+          && freePaper(d.paperId)
           && d.toUid is string
           && d.body is string && d.body.size() > 0 && d.body.size() <= 1000
           && d.sentAt == request.time

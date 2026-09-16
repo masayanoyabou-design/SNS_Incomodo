@@ -6,6 +6,7 @@ import '../models/post.dart';
 import '../providers/auth_provider.dart';
 import '../providers/letter_provider.dart';
 import '../providers/post_provider.dart';
+import '../widgets/envelope_view.dart';
 import '../widgets/letter_card.dart';
 import '../widgets/letter_paper.dart';
 import '../widgets/postmark.dart';
@@ -52,12 +53,20 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
     }
   }
 
-  Future<void> _loadBody() => _run(() async {
-        final body = await ref
-            .read(letterServiceProvider)
-            .readBody(uid: _uid, letterId: _letter.id);
-        if (mounted) setState(() => _body = body);
-      });
+  Future<void> _loadBody() => _run(_fetchContents);
+
+  /// The text and the paper arrive together, and only after opening.
+  Future<void> _fetchContents() async {
+    final contents = await ref
+        .read(letterServiceProvider)
+        .readContents(uid: _uid, letterId: _letter.id);
+    if (!mounted || contents == null) return;
+    setState(() {
+      _letter = _letter.withContents(
+          body: contents.body, paperId: contents.paperId);
+      _body = contents.body;
+    });
+  }
 
   Future<void> _open(Post at) => _run(() async {
         await ref
@@ -65,10 +74,7 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
             .open(uid: _uid, letter: _letter);
         if (!mounted) return;
         setState(() => _letter = _letter.markOpened(DateTime.now()));
-        final body = await ref
-            .read(letterServiceProvider)
-            .readBody(uid: _uid, letterId: _letter.id);
-        if (mounted) setState(() => _body = body);
+        await _fetchContents();
       });
 
   @override
@@ -127,7 +133,12 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
       BuildContext context, Post? openable, Post? waitingAt, DateTime now) {
     return Column(
       children: [
-        _Envelope(letter: _letter),
+        EnvelopeView(
+          design: _letter.envelope,
+          stamp: _letter.stamp,
+          from:
+              '${_letter.counterpartDisplayName}（${_letter.counterpartHandleWithAt}）',
+        ),
         const SizedBox(height: 20),
         Text(
           switch ((openable, waitingAt)) {
@@ -177,6 +188,7 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
     final opened = _letter.openedAt;
     return LetterPaper(
       body: _body ?? '',
+      design: _letter.paper,
       corner: SizedBox(
         width: 120,
         height: 96,
@@ -197,58 +209,6 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// A sealed letter: all you have before reaching your post is who it is
-/// from and the stamp they chose.
-class _Envelope extends StatelessWidget {
-  const _Envelope({required this.letter});
-
-  final Letter letter;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      height: 170,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLowest,
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.18),
-            offset: const Offset(0, 12),
-            blurRadius: 28,
-            spreadRadius: -18,
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Align(
-            alignment: Alignment.topRight,
-            child: StampView(design: letter.stamp, width: 64),
-          ),
-          Align(
-            alignment: Alignment.bottomLeft,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('差出人', style: theme.textTheme.labelSmall),
-                Text(
-                  '${letter.counterpartDisplayName}（${letter.counterpartHandleWithAt}）',
-                  style: theme.textTheme.titleSmall,
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

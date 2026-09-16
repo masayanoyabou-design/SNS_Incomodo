@@ -157,37 +157,57 @@ Map<String, Object> purse(int count, DateTime on) => {
       'refilledOn': time(on),
     };
 
-/// [stampId] null leaves the design off entirely.
-Map<String, Object> envelope(String fromUid, {String? stampId = 'basic'}) => {
+/// Passing null for a design leaves it off entirely.
+Map<String, Object> envelope(String fromUid,
+        {String? stampId = 'basic', String? envelopeId = 'plain'}) =>
+    {
       'fromUid': str(fromUid),
       'fromDisplayName': str('ボブ'),
       'fromHandle': str('bob'),
       if (stampId != null) 'stampId': str(stampId),
+      if (envelopeId != null) 'envelopeId': str(envelopeId),
       'openedAt': nullValue,
     };
 
-List<Map<String, dynamic>> delivery(String id, String fromUid,
-        {String? stampId = 'basic'}) =>
+List<Map<String, dynamic>> delivery(
+  String id,
+  String fromUid, {
+  String? stampId = 'basic',
+  String? envelopeId = 'plain',
+  String? paperId = 'ruled',
+}) =>
     [
-      set('users/$alice/letters/$id', envelope(fromUid, stampId: stampId),
+      set('users/$alice/letters/$id',
+          envelope(fromUid, stampId: stampId, envelopeId: envelopeId),
           serverTimestamps: ['sentAt']),
-      set('users/$alice/letters/$id/content/body', {'body': str('会いたいね')}),
+      set('users/$alice/letters/$id/content/body', {
+        'body': str('会いたいね'),
+        if (paperId != null) 'paperId': str(paperId),
+      }),
       set('users/$fromUid/sentLetters/$id', {
         'toUid': str(alice),
         'toDisplayName': str('アリス'),
         'toHandle': str('alice'),
         if (stampId != null) 'stampId': str(stampId),
+        if (envelopeId != null) 'envelopeId': str(envelopeId),
+        if (paperId != null) 'paperId': str(paperId),
         'body': str('会いたいね'),
         'openedAt': nullValue,
       }, serverTimestamps: ['sentAt']),
     ];
 
 /// A delivery with a stamp spent on it, which is what the app always sends.
-List<Map<String, dynamic>> stamped(String id, String fromUid,
-        {String? stampId = 'basic'}) =>
+List<Map<String, dynamic>> stamped(
+  String id,
+  String fromUid, {
+  String? stampId = 'basic',
+  String? envelopeId = 'plain',
+  String? paperId = 'ruled',
+}) =>
     [
       increment('users/$fromUid/stamps/wallet', 'count', -1),
-      ...delivery(id, fromUid, stampId: stampId),
+      ...delivery(id, fromUid,
+          stampId: stampId, envelopeId: envelopeId, paperId: paperId),
     ];
 
 Map<String, Object> post(String name, {double latitude = 35.0}) => {
@@ -336,6 +356,22 @@ Future<void> main() async {
       () => commit(stamped('l9', bob, stampId: 'premium_gold'), as: bob));
   await deny('nor go out with no design at all',
       () => commit(stamped('l10', bob, stampId: null), as: bob));
+
+  print('');
+  print('封筒と便箋（P3-7の拡張）');
+  await deny(
+      'an envelope nobody was given is refused',
+      () => commit(stamped('l11', bob, envelopeId: 'premium_gold'), as: bob));
+  await deny('as is a letter with no envelope',
+      () => commit(stamped('l12', bob, envelopeId: null), as: bob));
+  await deny(
+      'paper nobody was given is refused',
+      () => commit(stamped('l13', bob, paperId: 'premium_gold'), as: bob));
+  await deny('as is a letter with no paper',
+      () => commit(stamped('l14', bob, paperId: null), as: bob));
+  // l8 above was delivered with the default envelope and paper.
+  await deny('the paper stays hidden with the text until opening',
+      () => read('users/$alice/letters/l8/content/body', as: alice));
 
   await deny(
       'and helping yourself to more is refused',

@@ -4,10 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/letter.dart';
 import '../models/stamp_design.dart';
 import '../models/stamp_wallet.dart';
+import '../models/stationery.dart';
 import '../models/user_profile.dart';
 import '../providers/letter_provider.dart';
 import '../providers/stamp_provider.dart';
 import '../providers/user_provider.dart';
+import '../widgets/design_picker.dart';
+import '../widgets/envelope_view.dart';
+import '../widgets/letter_paper.dart';
 import '../widgets/stamp_view.dart';
 import 'friends_screen.dart';
 
@@ -28,6 +32,8 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
   final _bodyController = TextEditingController();
   late UserProfile? _to = widget.to;
   StampDesign _stamp = StampDesign.basic;
+  EnvelopeDesign _envelope = EnvelopeDesign.plain;
+  PaperDesign _paper = PaperDesign.ruled;
   String? _bodyError;
   bool _sending = false;
 
@@ -54,6 +60,8 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
             to: to,
             body: _bodyController.text,
             stamp: _stamp,
+            envelope: _envelope,
+            paper: _paper,
           );
       if (!mounted) return;
       Navigator.pop(context);
@@ -136,19 +144,54 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
               onChanged: (value) => setState(() => _to = value),
             ),
             const SizedBox(height: 20),
-            Text('貼る切手', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 2),
-            Text(
-              '届いた手紙は、ポストで開けるまで切手しか見えません。',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 8),
-            StampPicker(
+            // A picker only shows once there is more than one design to
+            // choose from, so envelopes and paper appear here by themselves
+            // when designs are added (see StationeryDesign).
+            DesignPicker<StampDesign>(
+              title: '貼る切手',
+              hint: '届いた手紙は、ポストで開けるまで封筒と切手しか見えません。',
               designs: StampDesign.free,
               selected: _stamp,
               onSelected: (design) => setState(() => _stamp = design),
+              preview: (design) => StampView(design: design),
             ),
-            const SizedBox(height: 16),
+            DesignPicker<EnvelopeDesign>(
+              title: '封筒',
+              designs: EnvelopeDesign.free,
+              selected: _envelope,
+              onSelected: (design) => setState(() => _envelope = design),
+              preview: (design) => SizedBox(
+                width: 100,
+                child: EnvelopeView(design: design, stamp: _stamp, from: ''),
+              ),
+              height: 96,
+            ),
+            DesignPicker<PaperDesign>(
+              title: '便箋',
+              hint: '便箋は、相手が手紙を開けたときに初めて見えます。',
+              designs: PaperDesign.free,
+              selected: _paper,
+              onSelected: (design) => setState(() => _paper = design),
+              preview: (design) => SizedBox(
+                width: 64,
+                height: 80,
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.topLeft,
+                    maxWidth: 200,
+                    maxHeight: 280,
+                    child: Transform.scale(
+                      scale: 0.32,
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(
+                        width: 200,
+                        child: LetterPaper(body: '', design: design),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
             TextField(
               controller: _bodyController,
               maxLines: 12,
