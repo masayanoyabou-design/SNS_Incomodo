@@ -6,6 +6,7 @@ import '../models/post.dart';
 import '../providers/letter_provider.dart';
 import '../providers/post_provider.dart';
 import '../widgets/letter_card.dart';
+import 'album_screen.dart';
 import 'letter_screen.dart';
 import 'write_letter_screen.dart';
 
@@ -41,6 +42,13 @@ class LettersScreen extends ConsumerWidget {
         appBar: AppBar(
           title: const Text('手紙'),
           actions: [
+            IconButton(
+              tooltip: '手紙のアルバム',
+              icon: const Icon(Icons.collections_bookmark_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AlbumScreen()),
+              ),
+            ),
             Builder(
               builder: (context) => IconButton(
                 tooltip: here == null ? '現在地を確認' : '現在地を確認し直す',

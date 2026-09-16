@@ -145,4 +145,31 @@ void main() {
       );
     });
   });
+
+  test('opening remembers where, and a copy keeps it', () {
+    final opened = letter().markOpened(sentAt, place: '自宅');
+    expect(opened.openedPlace, '自宅');
+    expect(opened.withContents(body: 'やあ', paperId: 'ruled').openedPlace,
+        '自宅');
+  });
+
+  test('the album holds opened letters, latest opening first', () {
+    Letter openedOn(String id, int day) => Letter(
+          id: id,
+          direction: LetterDirection.received,
+          counterpartUid: 'u2',
+          counterpartDisplayName: '後藤',
+          counterpartHandle: 'goto',
+          sentAt: sentAt,
+          openedAt: DateTime(2026, 9, day),
+        );
+
+    final album = albumOf([
+      openedOn('early', 17),
+      letter(),
+      openedOn('late', 20),
+      letter(direction: LetterDirection.sent, openedAt: sentAt),
+    ]);
+    expect(album.map((l) => l.id), ['late', 'early']);
+  });
 }

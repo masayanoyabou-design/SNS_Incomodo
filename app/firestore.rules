@@ -150,10 +150,18 @@ service cloud.firestore {
         return getAfter(wallet).data.count == get(wallet).data.count - 1;
       }
 
+      // Opening happens once, now, and may record the name of the post it
+      // happened at for the postmark (B28). The name is the recipient's to
+      // write: it is their post, and only their copy carries it.
       function onlyOpens() {
-        return request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['openedAt'])
-          && request.resource.data.openedAt == request.time;
+        let d = request.resource.data;
+        return resource.data.openedAt == null
+          && d.diff(resource.data).affectedKeys()
+            .hasOnly(['openedAt', 'openedPlace'])
+          && d.openedAt == request.time
+          && (!('openedPlace' in d)
+            || (d.openedPlace is string
+              && d.openedPlace.size() > 0 && d.openedPlace.size() <= 20));
       }
 
       allow read, delete: if signedInAs(uid);
@@ -206,8 +214,10 @@ service cloud.firestore {
 
       allow read, delete: if signedInAs(uid);
       allow create: if signedInAs(uid) && validCopy();
+      // Once, and without the place: that stays on the recipient's side.
       allow update: if request.auth != null
         && request.auth.uid == resource.data.toUid
+        && resource.data.openedAt == null
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['openedAt'])
         && request.resource.data.openedAt == request.time;

@@ -33,6 +33,35 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('the postmark carries where it was opened', (tester) async {
+    await pump(tester, Postmark(date: openedOn, place: '自宅'));
+
+    expect(find.text('自宅'), findsOneWidget);
+    expect(find.text('INCOMODO POST'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a screen reader hears the place too', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pump(tester, Postmark(date: openedOn, place: '自宅'));
+
+    expect(find.bySemanticsLabel('消印 自宅 2026.9.17'), findsOneWidget);
+    semantics.dispose();
+  });
+
+  test('a long place is cut to fit the ring, a blank one is none', () {
+    expect(postmarkPlace('おばあちゃんの家の前の郵便局'), 'おばあちゃんの…');
+    expect(postmarkPlace('自宅'), '自宅');
+    expect(postmarkPlace('  '), isNull);
+    expect(postmarkPlace(null), isNull);
+  });
+
+  testWidgets('the longest place a post can have still fits', (tester) async {
+    await pump(tester, Postmark(date: openedOn, place: 'あ' * 20, size: 64));
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('letter paper shows the writing', (tester) async {
     await pump(tester, const LetterPaper(body: '駅前のカフェで待ってる'));
 

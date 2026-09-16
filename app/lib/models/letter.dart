@@ -24,6 +24,7 @@ class Letter {
     required this.counterpartHandle,
     required this.sentAt,
     this.openedAt,
+    this.openedPlace,
     this.body,
     this.stampId = StampDesign.defaultId,
     this.envelopeId = EnvelopeDesign.defaultId,
@@ -45,6 +46,12 @@ class Letter {
 
   /// When the recipient opened it at one of their posts; null until then.
   final DateTime? openedAt;
+
+  /// The name of the post it was opened at — the place on the postmark
+  /// (PRD F-03). Only on the recipient's copy: the sender is never told
+  /// where the recipient's posts are, and a post's name can give that away
+  /// ("会社", "実家"). Null until opened.
+  final String? openedPlace;
 
   /// The text. Always present on a letter you sent (you wrote it), and on
   /// a received letter only once it has been fetched after opening.
@@ -78,13 +85,15 @@ class Letter {
   Letter withContents({required String body, required String paperId}) =>
       _copy(body: body, paperId: paperId);
 
-  Letter markOpened(DateTime at) => _copy(openedAt: at);
+  Letter markOpened(DateTime at, {String? place}) =>
+      _copy(openedAt: at, openedPlace: place);
 
   /// Every field copied in one place, so adding one can't be forgotten in
   /// a copy — as happened once with the stamp being reset on opening.
   Letter _copy({
     Object? body = _keep,
     Object? openedAt = _keep,
+    String? openedPlace,
     String? paperId,
   }) =>
       Letter(
@@ -95,6 +104,7 @@ class Letter {
         counterpartHandle: counterpartHandle,
         sentAt: sentAt,
         openedAt: identical(openedAt, _keep) ? this.openedAt : openedAt as DateTime?,
+        openedPlace: openedPlace ?? this.openedPlace,
         body: identical(body, _keep) ? this.body : body as String?,
         stampId: stampId,
         envelopeId: envelopeId,
@@ -155,3 +165,12 @@ Post? postYouAreAt({
   }
   return null;
 }
+
+/// The album: letters you have received and opened, most recently opened
+/// first — the order you went and got them in, not the order they were
+/// written.
+List<Letter> albumOf(Iterable<Letter> received) => [
+      for (final letter in received)
+        if (letter.direction == LetterDirection.received && letter.isOpened)
+          letter,
+    ]..sort((a, b) => b.openedAt!.compareTo(a.openedAt!));

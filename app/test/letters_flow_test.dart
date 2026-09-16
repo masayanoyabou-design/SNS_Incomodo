@@ -13,11 +13,13 @@ import 'package:incomodo/providers/letter_provider.dart';
 import 'package:incomodo/providers/post_provider.dart';
 import 'package:incomodo/providers/stamp_provider.dart';
 import 'package:incomodo/providers/user_provider.dart';
+import 'package:incomodo/screens/album_screen.dart';
 import 'package:incomodo/screens/letter_screen.dart';
 import 'package:incomodo/screens/letters_screen.dart';
 import 'package:incomodo/screens/write_letter_screen.dart';
 import 'package:incomodo/services/letter_service.dart';
 import 'package:incomodo/widgets/envelope_view.dart';
+import 'package:incomodo/widgets/postmark.dart';
 import 'package:incomodo/widgets/stamp_view.dart';
 
 /// The letter screens wired to fakes, so the whole path — list, open,
@@ -182,9 +184,15 @@ void main() {
       await tester.tap(find.text('ここで開ける'));
       await tester.pumpAndSettle();
 
-      expect(service.opened, ['l1']);
+      expect(service.opened, [('l1', '自宅')]);
       expect(find.text('また歩いて会いに行くよ'), findsOneWidget);
+      // The postmark says where, on the paper and above it.
       expect(find.textContaining('消印'), findsOneWidget);
+      expect(find.textContaining('・自宅'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is Postmark && w.place == '自宅'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a letter you sent shows its text without any of that',
@@ -198,6 +206,112 @@ void main() {
 
       expect(find.text('元気にしてる？'), findsOneWidget);
       expect(find.text('ここで開ける'), findsNothing);
+    });
+  });
+
+  group('手紙を捨てる（B25）', () {
+    /// Pushed on top of something, so being popped off can be seen.
+    Widget opener(Letter l) => Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => LetterScreen(letter: l))),
+            child: const Text('ひらく'),
+          ),
+        );
+
+    Future<void> throwAway(WidgetTester tester, {required bool confirm}) async {
+      await tester.tap(find.byTooltip('手紙を捨てる'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(confirm ? '捨てる' : 'やめる'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a sealed letter warns it will never be read', (tester) async {
+      final service = _FakeLetterService();
+      await tester.pumpWidget(app(opener(letter()), letters: service));
+      await tester.tap(find.text('ひらく'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('手紙を捨てる'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('もう読むことはできません'), findsOneWidget);
+
+      await tester.tap(find.text('捨てる'));
+      await tester.pumpAndSettle();
+      expect(service.deleted, [('l1', LetterDirection.received)]);
+      // Back where we came from.
+      expect(find.byType(LetterScreen), findsNothing);
+    });
+
+    testWidgets('changing your mind keeps it', (tester) async {
+      final service = _FakeLetterService();
+      await tester.pumpWidget(app(opener(letter()), letters: service));
+      await tester.tap(find.text('ひらく'));
+      await tester.pumpAndSettle();
+
+      await throwAway(tester, confirm: false);
+      expect(service.deleted, isEmpty);
+      expect(find.byType(LetterScreen), findsOneWidget);
+    });
+
+    testWidgets('a sent letter only loses your copy', (tester) async {
+      final service = _FakeLetterService();
+      final sent =
+          letter(direction: LetterDirection.sent).withBody('元気にしてる？');
+      await tester.pumpWidget(app(opener(sent), letters: service));
+      await tester.tap(find.text('ひらく'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('手紙を捨てる'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('相手に届いた手紙はそのまま残ります'), findsOneWidget);
+      await tester.tap(find.text('捨てる'));
+      await tester.pumpAndSettle();
+
+      expect(service.deleted, [('l1', LetterDirection.sent)]);
+    });
+  });
+
+  group('アルバム（B28）', () {
+    testWidgets('before any letter is opened, it says what will go there',
+        (tester) async {
+      await tester.pumpWidget(app(const AlbumScreen(), received: [letter()]));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('開けた手紙が、ここに並んでいきます'), findsOneWidget);
+    });
+
+    testWidgets('opened letters are there, sealed ones are not',
+        (tester) async {
+      await tester.pumpWidget(app(
+        const AlbumScreen(),
+        received: [
+          letter(id: 'sealed'),
+          Letter(
+            id: 'opened',
+            direction: LetterDirection.received,
+            counterpartUid: friend.uid,
+            counterpartDisplayName: friend.displayName,
+            counterpartHandle: friend.handle,
+            sentAt: now.subtract(const Duration(days: 2)),
+            openedAt: now,
+            openedPlace: '自宅',
+          ),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlbumTile), findsOneWidget);
+      expect(find.text('2026.9.16・自宅'), findsOneWidget);
+    });
+
+    testWidgets('the letters screen leads there', (tester) async {
+      await tester.pumpWidget(app(const LettersScreen()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('手紙のアルバム'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlbumScreen), findsOneWidget);
     });
   });
 
@@ -389,7 +503,8 @@ class _FakeLetterService implements LetterService {
   final sent = <(String, String, String)>[];
   final stamps = <String>[];
   final stationery = <(String envelope, String paper)>[];
-  final opened = <String>[];
+  final opened = <(String id, String place)>[];
+  final deleted = <(String id, LetterDirection direction)>[];
 
   @override
   Future<void> sendLetter({
@@ -408,8 +523,16 @@ class _FakeLetterService implements LetterService {
   }
 
   @override
-  Future<void> open({required String uid, required Letter letter}) async =>
-      opened.add(letter.id);
+  Future<void> open({
+    required String uid,
+    required Letter letter,
+    required String place,
+  }) async =>
+      opened.add((letter.id, place));
+
+  @override
+  Future<void> delete({required String uid, required Letter letter}) async =>
+      deleted.add((letter.id, letter.direction));
 
   @override
   Future<({String body, String paperId})?> readContents({

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/letter.dart';
 import '../models/stamp_design.dart';
@@ -94,15 +95,49 @@ class LetterService {
 
   /// Marks a letter opened, on both copies, so the sender sees "受取完了".
   ///
+  /// [place] is the name of the post it was opened at, for the postmark.
+  /// It goes on the recipient's copy only — see [Letter.openedPlace].
+  ///
   /// Whether the reader is actually standing at one of their posts is
   /// decided by the app — the rules can't check location (see MANUAL 15).
-  Future<void> open({required String uid, required Letter letter}) =>
-      (_firestore.batch()
-            ..update(_received(uid).doc(letter.id),
-                {'openedAt': FieldValue.serverTimestamp()})
+  Future<void> open({
+    required String uid,
+    required Letter letter,
+    required String place,
+  }) async {
+    final mine = _received(uid).doc(letter.id);
+    final opening = {
+      'openedAt': FieldValue.serverTimestamp(),
+      'openedPlace': place,
+    };
+    try {
+      await (_firestore.batch()
+            ..update(mine, opening)
             ..update(_sent(letter.counterpartUid).doc(letter.id),
                 {'openedAt': FieldValue.serverTimestamp()}))
           .commit();
+    } on FirebaseException catch (e) {
+      // The sender may have thrown their copy away (B25). Nobody is left to
+      // tell, but that mustn't stop the letter being opened.
+      if (e.code != 'not-found' && e.code != 'permission-denied') rethrow;
+      debugPrint('Sender\'s copy of ${letter.id} is gone; opening ours only');
+      await mine.update(opening);
+    }
+  }
+
+  /// Throws a letter away — only your own copy (B25).
+  ///
+  /// A received letter goes with its text, sealed or not; a sealed one is
+  /// then never read. A sent letter only loses the sender's copy: what was
+  /// delivered stays with the recipient.
+  Future<void> delete({required String uid, required Letter letter}) =>
+      switch (letter.direction) {
+        LetterDirection.received => (_firestore.batch()
+              ..delete(_body(uid, letter.id))
+              ..delete(_received(uid).doc(letter.id)))
+            .commit(),
+        LetterDirection.sent => _sent(uid).doc(letter.id).delete(),
+      };
 
   /// Fetches what is inside a received letter: its text and the paper it is
   /// written on. The server only answers once the letter has been opened.
@@ -136,6 +171,7 @@ class LetterService {
       // Pending local writes have no server time yet; show it as just now.
       sentAt: sentAt?.toDate() ?? DateTime.now(),
       openedAt: openedAt?.toDate(),
+      openedPlace: data['openedPlace'] as String?,
       body: data['body'] as String?,
       stampId: data['stampId'] as String? ?? StampDesign.defaultId,
       envelopeId: data['envelopeId'] as String? ?? EnvelopeDesign.defaultId,

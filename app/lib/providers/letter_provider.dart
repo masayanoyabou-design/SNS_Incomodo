@@ -27,3 +27,7 @@ final sentLettersProvider = StreamProvider<List<Letter>>((ref) {
 final unopenedCountProvider = Provider<int>((ref) =>
     ref.watch(receivedLettersProvider).value?.where((l) => !l.isOpened).length ??
     0);
+
+/// Opened letters, most recently opened first — the album (B28).
+final albumProvider = Provider<AsyncValue<List<Letter>>>(
+    (ref) => ref.watch(receivedLettersProvider).whenData(albumOf));

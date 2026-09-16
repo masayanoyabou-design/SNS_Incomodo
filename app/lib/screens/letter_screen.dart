@@ -71,11 +71,53 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
   Future<void> _open(Post at) => _run(() async {
         await ref
             .read(letterServiceProvider)
-            .open(uid: _uid, letter: _letter);
+            .open(uid: _uid, letter: _letter, place: at.name);
         if (!mounted) return;
-        setState(() => _letter = _letter.markOpened(DateTime.now()));
+        setState(() =>
+            _letter = _letter.markOpened(DateTime.now(), place: at.name));
         await _fetchContents();
       });
+
+  /// What throwing this one away costs, said before it happens (B25).
+  String _throwAwayWarning(bool sealed) => switch (_letter.direction) {
+        LetterDirection.received when sealed =>
+          'まだ開けていない手紙です。捨てると、もう読むことはできません。',
+        LetterDirection.received => '捨てた手紙は元に戻せません。',
+        LetterDirection.sent =>
+          'あなたの控えだけが消えます。相手に届いた手紙はそのまま残ります。',
+      };
+
+  Future<void> _throwAway(bool sealed) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('この手紙を捨てますか？'),
+        content: Text(_throwAwayWarning(sealed)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('やめる'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('捨てる'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    var done = false;
+    await _run(() async {
+      await ref
+          .read(letterServiceProvider)
+          .delete(uid: _uid, letter: _letter);
+      done = true;
+    });
+    if (done && mounted) Navigator.of(context).pop();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +143,16 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
           );
 
     return Scaffold(
-      appBar: AppBar(title: Text(sealed ? '届いた手紙' : '手紙')),
+      appBar: AppBar(
+        title: Text(sealed ? '届いた手紙' : '手紙'),
+        actions: [
+          IconButton(
+            tooltip: '手紙を捨てる',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _busy ? null : () => _throwAway(sealed),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -114,7 +165,10 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
           const SizedBox(height: 4),
           Text('${formatStamp(_letter.sentAt)}・${_letter.statusLabel}'),
           if (_letter.openedAt != null)
-            Text('消印：${formatStamp(_letter.openedAt!)}'),
+            Text([
+              '消印：${formatStamp(_letter.openedAt!)}',
+              ?_letter.openedPlace,
+            ].join('・')),
           const SizedBox(height: 24),
           if (sealed)
             _sealed(context, openable, waitingAt, now)
@@ -205,7 +259,11 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
               Positioned(
                 left: 0,
                 bottom: 0,
-                child: Postmark(date: opened, size: 72),
+                child: Postmark(
+                  date: opened,
+                  place: _letter.openedPlace,
+                  size: 72,
+                ),
               ),
           ],
         ),
