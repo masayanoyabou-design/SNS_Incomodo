@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/invite.dart';
 import '../models/user_profile.dart';
+import '../providers/safety_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/invite_card.dart';
+import '../widgets/safety_actions.dart';
 
 /// Show your invite, find people by ID or invite link, answer connection
 /// requests, and see who you can exchange letters with.
@@ -111,11 +113,23 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         ));
   }
 
+  Future<void> _unblock(UserProfile person) async {
+    final me = ref.read(myProfileProvider).value;
+    if (me == null) return;
+    await _run(() async {
+      await ref
+          .read(safetyServiceProvider)
+          .unblock(uid: me.uid, targetUid: person.uid);
+      _showMessage('${person.displayName}さんのブロックを解除しました');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(myProfileProvider).value;
     final requests = ref.watch(friendRequestsProvider).value ?? const [];
     final friends = ref.watch(friendsProvider).value ?? const [];
+    final blocked = ref.watch(blockedProvider).value ?? const [];
 
     return Scaffold(
       appBar: AppBar(title: const Text('友だち')),
@@ -186,6 +200,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                       onPressed: _busy ? null : () => _accept(requester),
                       child: const Text('つながる'),
                     ),
+                    SafetyMenu(target: requester),
                   ],
                 ),
               ),
@@ -203,8 +218,29 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               child: ListTile(
                 title: Text(friend.displayName),
                 subtitle: Text(friend.handleWithAt),
+                trailing: SafetyMenu(target: friend),
               ),
             ),
+          if (blocked.isNotEmpty) ...[
+            const Divider(height: 32),
+            Text('ブロック中（${blocked.length}）',
+                style: Theme.of(context).textTheme.titleMedium),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Text('解除しても友だちには戻りません。もう一度つながるには、リクエストからやり直します。'),
+            ),
+            for (final person in blocked)
+              Card(
+                child: ListTile(
+                  title: Text(person.displayName),
+                  subtitle: Text(person.handleWithAt),
+                  trailing: TextButton(
+                    onPressed: _busy ? null : () => _unblock(person),
+                    child: const Text('解除'),
+                  ),
+                ),
+              ),
+          ],
           if (_busy) ...[
             const SizedBox(height: 16),
             const Center(child: CircularProgressIndicator()),

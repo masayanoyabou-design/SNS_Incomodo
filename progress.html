@@ -423,19 +423,19 @@
       </div>
 
       <div class="issue">
-        <input type="checkbox" id="i33">
+        <input type="checkbox" id="i33" checked>
         <div class="issue-body">
           <p>アプリ内の通報・ブロック機能がない</p>
-          <p class="why">利用者同士がやりとりするアプリでは、App Storeの審査で「不適切な内容を通報する手段」と「相手をブロックする手段」が求められる。利用規約の下書き（B15）でも前提にしている。友だちの解除だけでは、見知らぬ人と文通するランダムポスト（F-04）に対応できない。</p>
+          <p class="why"><b>実装（2026-09-17、MANUAL 33章、実機は未確認）。</b>届いた手紙・友だち・リクエストの「︙」から通報・ブロックできる。ブロックすると友だちから外れ、その人からの手紙とリクエストはルールでも拒否される。通報は<code>reports</code>に記録され、アプリからは誰も読めない。<b>運営者はFirebaseコンソールで<code>reports</code>を定期的に確認する必要がある</b>（メール通知はBlazeプランが必要）。</p>
         </div>
         <span class="tag blocker">Blocker</span>
       </div>
 
       <div class="issue">
-        <input type="checkbox" id="i34">
+        <input type="checkbox" id="i34" checked>
         <div class="issue-body">
           <p>アプリ内の退会（アカウント削除）機能がない</p>
-          <p class="why">App Store・Google Playの審査では、アプリ内からアカウントを削除できることが求められる。削除するのはアカウント・ポスト・届いた手紙・切手など本人のデータで、相手に届けた手紙は相手の手元に残す（利用規約の下書きに合わせる）。</p>
+          <p class="why"><b>実装（2026-09-17、MANUAL 34章、実機は未確認）。</b>ホーム右上のアカウントメニューから削除できる。Googleで再ログインしてから、プロフィール・ID・ポスト・切手・友だち・手紙などを削除し、ログイン画面に戻る。相手に届けた手紙と、最初のポストを使った記録は残す（退会→再登録で工事なしのポストを何度も作れないように）。</p>
         </div>
         <span class="tag blocker">Blocker</span>
       </div>
@@ -453,7 +453,7 @@
         <input type="checkbox" id="i22" checked>
         <div class="issue-body">
           <p>セキュリティルールが「不正を拒否できるか」が未検証</p>
-          <p class="why">Firestoreエミュレータに対して2人のユーザーを名乗ってリクエストを送る検証スクリプト（`app/tool/rules_check.dart`）を用意し、78件が通過。工事の日時を過去にする・5つ目のポストを作る・他人のポストを書き換える・友だちでない人に手紙を送る・未開封の本文を読む・切手を使わずに送る、などが拒否されることを確認済み。Node.js不要でDartとエミュレータだけで動く（MANUAL 19章）。</p>
+          <p class="why">Firestoreエミュレータに対して2人のユーザーを名乗ってリクエストを送る検証スクリプト（`app/tool/rules_check.dart`）を用意し、96件が通過。工事の日時を過去にする・5つ目のポストを作る・他人のポストを書き換える・友だちでない人に手紙を送る・未開封の本文を読む・切手を使わずに送る、などが拒否されることを確認済み。Node.js不要でDartとエミュレータだけで動く（MANUAL 19章）。</p>
         </div>
         <span class="tag note">要対応</span>
       </div>

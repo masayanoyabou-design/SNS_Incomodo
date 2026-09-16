@@ -832,6 +832,151 @@ Future<void> main() async {
     ], as: alice),
   );
 
+  print('');
+  print('ブロック（B33）');
+  await commit([
+    set('users/$alice/friends/$bob', {
+      'displayName': str('ボブ'),
+      'handle': str('bob'),
+    }),
+    set('users/$bob/stamps/wallet', purse(5, today)),
+  ], as: 'owner');
+  Map<String, dynamic> blocking(String uid, String other) => set(
+    'users/$uid/blocked/$other',
+    {'displayName': str('ボブ'), 'handle': str('bob')},
+    serverTimestamps: ['blockedAt'],
+  );
+  await deny(
+    'nobody can put someone on another person\'s blocked list',
+    () => commit([blocking(alice, bob)], as: carol),
+  );
+  await deny(
+    'nor block themselves',
+    () => commit([blocking(alice, alice)], as: alice),
+  );
+  await allow(
+    'blocking takes them off your friends in the same step',
+    () => commit([
+      blocking(alice, bob),
+      remove('users/$alice/friends/$bob'),
+    ], as: alice),
+  );
+  // Put Bob back on Alice's friends as owner, so what refuses him below is
+  // the block alone.
+  await commit([
+    set('users/$alice/friends/$bob', {
+      'displayName': str('ボブ'),
+      'handle': str('bob'),
+    }),
+  ], as: 'owner');
+  await deny(
+    'someone blocked cannot deliver a letter',
+    () => commit(stamped('l20', bob), as: bob),
+  );
+  await deny(
+    'nor send a friend request',
+    () => commit([
+      set(
+        'users/$alice/friendRequests/$bob',
+        {'displayName': str('ボブ'), 'handle': str('bob')},
+        serverTimestamps: ['createdAt'],
+      ),
+    ], as: bob),
+  );
+  await deny(
+    'nor see who blocked them',
+    () => read('users/$alice/blocked/$bob', as: bob),
+  );
+  await allow(
+    'a block can be lifted',
+    () => commit([remove('users/$alice/blocked/$bob')], as: alice),
+  );
+  await allow(
+    'and then letters come through again',
+    () => commit(stamped('l21', bob), as: bob),
+  );
+
+  print('');
+  print('通報（B33）');
+  Map<String, Object> reportOf({
+    String reporter = carol,
+    String target = bob,
+    String reason = 'harassment',
+  }) => {
+    'reporterUid': str(reporter),
+    'targetUid': str(target),
+    'reason': str(reason),
+    'detail': str('何度も場所を聞かれる'),
+    'letterId': str('l21'),
+  };
+  await allow(
+    'anyone signed in can report someone',
+    () => commit([
+      set('reports/r1', reportOf(), serverTimestamps: ['createdAt']),
+    ], as: carol),
+  );
+  await deny(
+    'but not in someone else\'s name',
+    () => commit([
+      set('reports/r2', reportOf(reporter: alice), serverTimestamps: ['createdAt']),
+    ], as: carol),
+  );
+  await deny(
+    'nor for a reason the app doesn\'t offer',
+    () => commit([
+      set('reports/r3', reportOf(reason: 'dislike'), serverTimestamps: ['createdAt']),
+    ], as: carol),
+  );
+  await deny(
+    'nor about themselves',
+    () => commit([
+      set('reports/r4', reportOf(target: carol), serverTimestamps: ['createdAt']),
+    ], as: carol),
+  );
+  await deny(
+    'reports cannot be read from the app, even by the reporter',
+    () => read('reports/r1', as: carol),
+  );
+  await deny(
+    'nor rewritten',
+    () => commit([
+      set('reports/r1', reportOf(reason: 'other'), serverTimestamps: ['createdAt']),
+    ], as: carol),
+  );
+
+  print('');
+  print('退会（B34）');
+  const erase = 'erase';
+  await commit([
+    set('users/$erase', {'displayName': str('消える人'), 'handle': str('erase')}),
+    set('handles/erase', {'uid': str(erase)}),
+    set('users/$erase/stamps/wallet', purse(0, today)),
+  ], as: 'owner');
+  await deny(
+    'the stamp wallet cannot be deleted on its own (to refill it at will)',
+    () => commit([remove('users/$erase/stamps/wallet')], as: erase),
+  );
+  await deny(
+    'nobody can delete someone else\'s account',
+    () => commit([
+      remove('users/$erase/stamps/wallet'),
+      remove('handles/erase'),
+      remove('users/$erase'),
+    ], as: carol),
+  );
+  await allow(
+    'the account goes with its wallet and ID in one step',
+    () => commit([
+      remove('users/$erase/stamps/wallet'),
+      remove('handles/erase'),
+      remove('users/$erase'),
+    ], as: erase),
+  );
+  await deny(
+    'but the first-post marker stays, so deleting cannot earn another',
+    () => commit([remove('users/$erase/meta/firstPost')], as: erase),
+  );
+
   _client.close();
   print('');
   print('$_passed passed, ${_failures.length} failed');

@@ -31,6 +31,43 @@ service cloud.firestore {
       // The handle is claimed once; only the display name can change later.
       allow update: if signedInAs(uid) && validProfile()
         && request.resource.data.handle == resource.data.handle;
+      // Deleting the account (B34).
+      allow delete: if signedInAs(uid);
+    }
+
+    // People {uid} has blocked (B33). Only {uid} sees or changes the list;
+    // being on it stops friend requests and letters from that person.
+    match /users/{uid}/blocked/{otherUid} {
+      allow read, delete: if signedInAs(uid);
+      allow create, update: if signedInAs(uid)
+        && otherUid != uid
+        && request.resource.data.keys().hasOnly(['displayName', 'handle', 'blockedAt'])
+        && request.resource.data.blockedAt == request.time;
+    }
+
+    function blockedBy(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid)/blocked/$(request.auth.uid));
+    }
+
+    // Reports (B33): anyone signed in may file one under their own ID.
+    // Nobody reads them from the app, the reporter included; the operator
+    // reviews them in the Firebase console.
+    match /reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(
+            ['reporterUid', 'targetUid', 'reason', 'detail', 'letterId', 'createdAt'])
+        && request.resource.data.keys().hasAll(
+            ['reporterUid', 'targetUid', 'reason', 'detail', 'createdAt'])
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.targetUid is string
+        && request.resource.data.targetUid != request.auth.uid
+        && request.resource.data.reason in
+            ['harassment', 'locating', 'inappropriate', 'spam', 'other']
+        && request.resource.data.detail is string
+        && request.resource.data.detail.size() <= 1000
+        && (!('letterId' in request.resource.data)
+            || request.resource.data.letterId is string)
+        && request.resource.data.createdAt == request.time;
     }
 
     // Handle reservations, so two people can't claim the same one.
@@ -60,6 +97,7 @@ service cloud.firestore {
       // but all that does is skip the automatic request back to them.
       allow create, update: if request.auth != null
         && fromUid == request.auth.uid
+        && !blockedBy(uid)
         && request.resource.data.keys()
             .hasOnly(['displayName', 'handle', 'createdAt', 'reply'])
         && request.resource.data.createdAt == request.time
@@ -84,6 +122,11 @@ service cloud.firestore {
       }
 
       allow read: if signedInAs(uid);
+
+      // Only together with the whole account (B34). Deleting the wallet on
+      // its own and creating a fresh one would hand out stamps at will.
+      allow delete: if signedInAs(uid)
+        && !existsAfter(/databases/$(database)/documents/users/$(uid));
 
       // First ever wallet: today's stamps, dated today.
       allow create: if signedInAs(uid)
@@ -174,7 +217,8 @@ service cloud.firestore {
 
       allow read, delete: if signedInAs(uid);
       allow create: if request.auth != null
-        && validLetter() && acceptedByRecipient() && stampSpent();
+        && validLetter() && acceptedByRecipient() && !blockedBy(uid)
+        && stampSpent();
       allow update: if signedInAs(uid) && onlyOpens();
 
       // The text, kept apart from the envelope so that an unopened letter

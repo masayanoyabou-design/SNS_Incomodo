@@ -1,10 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/post.dart';
 import '../providers/auth_provider.dart';
 import '../providers/letter_provider.dart';
 import '../providers/post_provider.dart';
+import '../providers/safety_provider.dart';
 import '../providers/stamp_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/location_service.dart';
@@ -140,6 +143,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// Deleting the account (B34). Nothing here can be undone, so it says
+  /// exactly what goes and what stays before asking.
+  Future<void> _deleteAccount() async {
+    final profile = ref.read(myProfileProvider).value;
+    if (profile == null) return;
+    final ok = await _confirm(
+      title: 'アカウントを削除しますか？',
+      message: 'プロフィール、ID（${profile.handleWithAt}）、ポスト、切手、友だち、'
+          '届いた手紙と送った手紙の控えがすべて削除され、元に戻せません。'
+          '相手に届けた手紙は、相手の手元に残ります。\n\n'
+          '確認のため、次にGoogleでもう一度ログインしてください。',
+      confirmLabel: '削除する',
+    );
+    if (!ok) return;
+
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(accountServiceProvider)
+          .deleteAccount(uid: profile.uid, handle: profile.handle);
+      // Signed out now: the app goes back to the sign-in screen by itself.
+    } catch (e) {
+      debugPrint('Deleting the account failed: $e');
+      _showMessage(switch (e) {
+        FirebaseAuthException(code: 'user-mismatch') =>
+          'ログイン中とは別のGoogleアカウントが選ばれました。削除は行っていません',
+        GoogleSignInException(code: GoogleSignInExceptionCode.canceled) =>
+          'ログインが取り消されたため、削除は行っていません',
+        _ => '削除できませんでした。電波の良い場所で、もう一度お試しください（$e）',
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<String?> _askName({required String title, required String initial}) {
     final controller = TextEditingController(text: initial);
     String? error;
@@ -240,10 +278,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               MaterialPageRoute(builder: (_) => const FriendsScreen()),
             ),
           ),
-          IconButton(
-            tooltip: 'ログアウト',
-            icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authServiceProvider).signOut(),
+          PopupMenuButton<_AccountAction>(
+            tooltip: 'アカウント',
+            icon: const Icon(Icons.account_circle_outlined),
+            enabled: !_busy,
+            onSelected: (action) => switch (action) {
+              _AccountAction.signOut =>
+                ref.read(authServiceProvider).signOut(),
+              _AccountAction.delete => _deleteAccount(),
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                  value: _AccountAction.signOut, child: Text('ログアウト')),
+              PopupMenuItem(
+                  value: _AccountAction.delete, child: Text('アカウントを削除')),
+            ],
           ),
         ],
       ),
@@ -295,3 +344,5 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 }
+
+enum _AccountAction { signOut, delete }

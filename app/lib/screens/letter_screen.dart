@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/letter.dart';
 import '../models/post.dart';
+import '../models/user_profile.dart';
 import '../providers/auth_provider.dart';
 import '../providers/letter_provider.dart';
 import '../providers/post_provider.dart';
@@ -11,6 +12,7 @@ import '../widgets/envelope_view.dart';
 import '../widgets/letter_card.dart';
 import '../widgets/letter_paper.dart';
 import '../widgets/postmark.dart';
+import '../widgets/safety_actions.dart';
 import '../widgets/stamp_view.dart';
 
 /// One letter. A received letter stays sealed — its text isn't even on
@@ -171,6 +173,17 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
             icon: const Icon(Icons.delete_outline),
             onPressed: _busy ? null : () => _throwAway(sealed),
           ),
+          // Only what arrived can be unwanted. Reporting doesn't need the
+          // letter opened: an unwelcome sender is reason enough.
+          if (_letter.direction == LetterDirection.received)
+            SafetyMenu(
+              target: UserProfile(
+                uid: _letter.counterpartUid,
+                displayName: _letter.counterpartDisplayName,
+                handle: _letter.counterpartHandle,
+              ),
+              letterId: _letter.id,
+            ),
         ],
       ),
       body: ListView(

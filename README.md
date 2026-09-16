@@ -61,4 +61,4 @@ SNS_Incomodo/
 - Firebase（Authentication・Firestore〈東京リージョン〉・Storage）
 - QRコード表示: qr_flutter（招待用。読み取りは未実装）
 - 状態管理: Riverpod（見た目とロジックを分離し、UIを後から差し替えやすくするため）
-- 開発環境の構築手順・ハマりどころは `MANUAL.md` の10〜32章を参照
+- 開発環境の構築手順・ハマりどころは `MANUAL.md` の10〜34章を参照

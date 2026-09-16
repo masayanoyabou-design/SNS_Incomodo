@@ -33,6 +33,25 @@ class AuthService {
     return FirebaseAuth.instance.signInWithCredential(credential);
   }
 
+  /// Has the user sign in with Google again, for something Firebase only
+  /// allows right after signing in — deleting the account.
+  Future<void> reauthenticateWithGoogle() async {
+    final user = currentUser;
+    if (user == null) throw StateError('ログインしていません');
+    await _ensureGoogleSignInInitialized();
+    final account = await _googleSignIn.authenticate();
+    final credential =
+        GoogleAuthProvider.credential(idToken: account.authentication.idToken);
+    await user.reauthenticateWithCredential(credential);
+  }
+
+  /// Removes the Firebase account itself and signs out of Google, which
+  /// takes the app back to the sign-in screen.
+  Future<void> deleteCurrentUser() async {
+    await currentUser?.delete();
+    await _googleSignIn.signOut();
+  }
+
   Future<void> signOut() async {
     await FirebaseAuth.instance.signOut();
     await _googleSignIn.signOut();
