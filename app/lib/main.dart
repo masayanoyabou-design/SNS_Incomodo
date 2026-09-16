@@ -8,6 +8,7 @@ import 'providers/user_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_setup_screen.dart';
+import 'screens/update_required_screen.dart';
 import 'theme/incomodo_theme.dart';
 
 void main() async {
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Incomodo',
       theme: buildIncomodoTheme(),
-      home: const AuthGate(),
+      home: const UpdateGate(child: AuthGate()),
     );
   }
 }
@@ -37,12 +38,16 @@ class AuthGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     const loading = Scaffold(body: Center(child: CircularProgressIndicator()));
 
-    return ref.watch(authStateProvider).when(
+    return ref
+        .watch(authStateProvider)
+        .when(
           loading: () => loading,
           error: (error, _) => _error(error),
           data: (user) {
             if (user == null) return const LoginScreen();
-            return ref.watch(myProfileProvider).when(
+            return ref
+                .watch(myProfileProvider)
+                .when(
                   loading: () => loading,
                   error: (error, _) => _error(error),
                   data: (profile) => profile == null

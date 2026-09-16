@@ -812,6 +812,26 @@ Future<void> main() async {
     ], as: carol),
   );
 
+  print('');
+  print('アプリの設定（B31）');
+  await commit([
+    set('config/app', {
+      'minBuild': {'integerValue': '1'},
+    }),
+  ], as: 'owner');
+  await allow(
+    'anyone can read the oldest build allowed, even before signing in',
+    () => read('config/app'),
+  );
+  await deny(
+    'but nobody can change it from the app',
+    () => commit([
+      set('config/app', {
+        'minBuild': {'integerValue': '0'},
+      }),
+    ], as: alice),
+  );
+
   _client.close();
   print('');
   print('$_passed passed, ${_failures.length} failed');

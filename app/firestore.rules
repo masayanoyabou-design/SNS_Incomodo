@@ -7,6 +7,14 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // Settings for every copy of the app, such as the oldest build still
+    // allowed to run (B31). Readable before signing in, so an old build is
+    // stopped at the door; written only from the Firebase console.
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Public identity: the name on letters and the handle people search for.
     // Readable by any signed-in user so a handle can be resolved to a person.
     match /users/{uid} {
