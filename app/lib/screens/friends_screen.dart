@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/invite.dart';
 import '../models/user_profile.dart';
 import '../providers/user_provider.dart';
+import '../widgets/invite_card.dart';
 
-/// Find people by ID, answer connection requests, and see who you can
-/// exchange letters with.
+/// Show your invite, find people by ID or invite link, answer connection
+/// requests, and see who you can exchange letters with.
 class FriendsScreen extends ConsumerStatefulWidget {
   const FriendsScreen({super.key});
 
@@ -44,19 +47,26 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     }
   }
 
+  Future<void> _copyInvite(UserProfile me) async {
+    await Clipboard.setData(ClipboardData(text: Invite.messageFor(me)));
+    _showMessage('招待リンクをコピーしました');
+  }
+
   Future<void> _search() async {
-    final error = UserProfile.validateHandle(_searchController.text);
-    if (error != null) {
+    final input = _searchController.text;
+    final handle = Invite.handleFrom(input);
+    if (handle == null) {
       setState(() {
         _found = null;
-        _searchMessage = error;
+        _searchMessage = input.contains('://')
+            ? 'このリンクからIDを読み取れませんでした'
+            : UserProfile.validateHandle(input);
       });
       return;
     }
     await _run(() async {
       final me = ref.read(myProfileProvider).value;
-      final found =
-          await ref.read(userServiceProvider).findByHandle(_searchController.text);
+      final found = await ref.read(userServiceProvider).findByHandle(handle);
       if (!mounted) return;
       setState(() {
         _found = found?.uid == me?.uid ? null : found;
@@ -113,15 +123,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           if (me != null) ...[
-            Text('あなたのID', style: Theme.of(context).textTheme.labelMedium),
-            SelectableText(
-              me.handleWithAt,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const Text('このIDを相手に伝えると、相手から見つけてもらえます'),
+            InviteCard(profile: me, onCopyLink: () => _copyInvite(me)),
             const Divider(height: 32),
           ],
-          Text('IDで探す', style: Theme.of(context).textTheme.titleMedium),
+          Text('IDか招待リンクで探す',
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -130,8 +136,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   controller: _searchController,
                   autocorrect: false,
                   decoration: InputDecoration(
-                    labelText: '相手のID',
-                    prefixText: '@',
+                    labelText: '相手のID / 招待リンク',
+                    hintText: '@incomodo',
                     errorText: _searchMessage,
                   ),
                   onSubmitted: (_) => _search(),

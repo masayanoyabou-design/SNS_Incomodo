@@ -109,6 +109,30 @@ src="https://www.facebook.com/tr?id=1457252082902363&ev=PageView&noscript=1"
   .logo-sub{ font-size:0.68rem; color:var(--gold-soft); letter-spacing:0.05em; }
   .topbar-meta{ font-size:0.68rem; color:var(--gold-soft); letter-spacing:0.04em; white-space:nowrap; }
 
+  /* ========== INVITE (arrived from a QR code or invite link) ========== */
+  .invite{ padding: 18px 0 0; }
+  .invite-card{
+    background: var(--card);
+    border: 1px solid var(--ink-faintest);
+    border-radius: 10px;
+    padding: 20px;
+    text-align:center;
+    box-shadow: var(--shadow);
+  }
+  .invite-eyebrow{ color: var(--gold-soft); margin:0 0 6px; }
+  .invite-id{
+    font-size: clamp(1.4rem, 5vw, 1.8rem);
+    font-weight:700; color: var(--red-deep);
+    margin: 0 0 10px; word-break: break-all;
+  }
+  .invite-note{ font-size:0.86rem; color: var(--ink-faint); line-height:1.8; margin:0 0 14px; }
+  .invite-copy{
+    font: inherit; font-size:0.86rem; cursor:pointer;
+    background: var(--paper-alt); color: var(--ink-soft);
+    border:1px solid var(--ink-faintest); border-radius:999px;
+    padding: 9px 20px;
+  }
+
   /* ================= HERO ================= */
   .hero{ padding: 30px 0 56px; }
   .hero h1{
@@ -360,6 +384,40 @@ src="https://www.facebook.com/tr?id=1457252082902363&ev=PageView&noscript=1"
       <span class="topbar-meta stamp-label">2026 — 事前登録</span>
     </div>
   </div>
+
+  <!-- ============ INVITE: shown when someone arrives via ?id=xxx ============ -->
+  <section class="invite" id="invite" hidden>
+    <div class="wrap">
+      <div class="invite-card">
+        <p class="stamp-label invite-eyebrow">招待が届いています</p>
+        <p class="invite-id" id="invite-id"></p>
+        <p class="invite-note">
+          Incomodoのアプリで、このIDを検索するとつながれます。<br>
+          アプリはまだ準備中です。下のフォームから事前登録しておくと、公開したときにお知らせします。
+        </p>
+        <button class="invite-copy" id="invite-copy" type="button">IDをコピー</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // An invite link (or a scanned QR) carries the sender's ID in ?id=.
+    // Inserted as text, never HTML, and only if it matches the ID format.
+    (function () {
+      var id = new URLSearchParams(location.search).get('id') || '';
+      if (!/^[a-z0-9_]{3,15}$/.test(id)) return;
+      var section = document.getElementById('invite');
+      var label = document.getElementById('invite-id');
+      label.textContent = '@' + id;
+      section.hidden = false;
+      document.getElementById('invite-copy').addEventListener('click', function () {
+        var button = this;
+        navigator.clipboard.writeText('@' + id).then(function () {
+          button.textContent = 'コピーしました';
+        });
+      });
+    })();
+  </script>
 
   <!-- ================= HERO ================= -->
   <section class="hero">
