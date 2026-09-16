@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/letter.dart';
+import 'stamp_view.dart';
 
 /// "9月16日 15:04" — no intl dependency, and the year only when it isn't
 /// this one, because most letters are recent.
@@ -67,11 +68,9 @@ class LetterCard extends StatelessWidget {
     return Card(
       child: ListTile(
         onTap: onTap,
-        leading: Icon(
-          // Sealed until the recipient opens it, whichever side you are on.
-          letter.isOpened ? Icons.drafts_outlined : Icons.mail_outline,
-          color: canOpenNow ? Theme.of(context).colorScheme.primary : null,
-        ),
+        // The stamp is what an envelope shows before it is opened, so it is
+        // what stands for the letter in the list too.
+        leading: StampView(design: letter.stamp, width: 36),
         title: Text(_title),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

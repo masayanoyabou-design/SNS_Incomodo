@@ -157,30 +157,37 @@ Map<String, Object> purse(int count, DateTime on) => {
       'refilledOn': time(on),
     };
 
-Map<String, Object> envelope(String fromUid) => {
+/// [stampId] null leaves the design off entirely.
+Map<String, Object> envelope(String fromUid, {String? stampId = 'basic'}) => {
       'fromUid': str(fromUid),
       'fromDisplayName': str('ボブ'),
       'fromHandle': str('bob'),
+      if (stampId != null) 'stampId': str(stampId),
       'openedAt': nullValue,
     };
 
-List<Map<String, dynamic>> delivery(String id, String fromUid) => [
-      set('users/$alice/letters/$id', envelope(fromUid),
+List<Map<String, dynamic>> delivery(String id, String fromUid,
+        {String? stampId = 'basic'}) =>
+    [
+      set('users/$alice/letters/$id', envelope(fromUid, stampId: stampId),
           serverTimestamps: ['sentAt']),
       set('users/$alice/letters/$id/content/body', {'body': str('会いたいね')}),
       set('users/$fromUid/sentLetters/$id', {
         'toUid': str(alice),
         'toDisplayName': str('アリス'),
         'toHandle': str('alice'),
+        if (stampId != null) 'stampId': str(stampId),
         'body': str('会いたいね'),
         'openedAt': nullValue,
       }, serverTimestamps: ['sentAt']),
     ];
 
-/// A delivery with its stamp, which is what the app always sends.
-List<Map<String, dynamic>> stamped(String id, String fromUid) => [
+/// A delivery with a stamp spent on it, which is what the app always sends.
+List<Map<String, dynamic>> stamped(String id, String fromUid,
+        {String? stampId = 'basic'}) =>
+    [
       increment('users/$fromUid/stamps/wallet', 'count', -1),
-      ...delivery(id, fromUid),
+      ...delivery(id, fromUid, stampId: stampId),
     ];
 
 Map<String, Object> post(String name, {double latitude = 35.0}) => {
@@ -318,6 +325,18 @@ Future<void> main() async {
       () => commit(stamped('l6', bob), as: bob));
   await deny('out of stamps, the letter does not go either',
       () => commit(stamped('l7', bob), as: bob));
+  print('');
+  print('切手の絵柄（P3-7）');
+  await commit([set('users/$bob/stamps/wallet', purse(5, today))],
+      as: 'owner');
+  await allow('a letter can carry any free design',
+      () => commit(stamped('l8', bob, stampId: 'sakura'), as: bob));
+  await deny(
+      'but not a design nobody was given',
+      () => commit(stamped('l9', bob, stampId: 'premium_gold'), as: bob));
+  await deny('nor go out with no design at all',
+      () => commit(stamped('l10', bob, stampId: null), as: bob));
+
   await deny(
       'and helping yourself to more is refused',
       () => commit([increment('users/$bob/stamps/wallet', 'count', 5)],

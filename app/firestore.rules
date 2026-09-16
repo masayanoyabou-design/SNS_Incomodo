@@ -105,13 +105,22 @@ service cloud.firestore {
     // Note: the rules cannot check that the reader is standing at a post
     // — location isn't available here. That 50m rule lives in the app
     // (see MANUAL 15 and backlog B23).
+    // The stamp designs anyone may stick on a letter. Mirrors
+    // StampDesign.free in lib/models/stamp_design.dart (stamp_design_test
+    // checks they match). A design that isn't here — a future paid one —
+    // is refused until entitlement to it can be checked.
+    function freeStamp(id) {
+      return id in ['basic', 'sakura', 'aozora', 'yoru', 'konoha'];
+    }
+
     match /users/{uid}/letters/{letterId} {
       function validLetter() {
         let d = request.resource.data;
         return d.keys().hasOnly(['fromUid', 'fromDisplayName', 'fromHandle',
-            'sentAt', 'openedAt'])
+            'stampId', 'sentAt', 'openedAt'])
           && d.keys().hasAll(['fromUid', 'fromDisplayName', 'fromHandle',
-            'sentAt', 'openedAt'])
+            'stampId', 'sentAt', 'openedAt'])
+          && freeStamp(d.stampId)
           && d.fromUid == request.auth.uid
           && d.fromDisplayName is string && d.fromDisplayName.size() <= 20
           && d.fromHandle is string
@@ -169,9 +178,10 @@ service cloud.firestore {
       function validCopy() {
         let d = request.resource.data;
         return d.keys().hasOnly(['toUid', 'toDisplayName', 'toHandle',
-            'body', 'sentAt', 'openedAt'])
+            'stampId', 'body', 'sentAt', 'openedAt'])
           && d.keys().hasAll(['toUid', 'toDisplayName', 'toHandle',
-            'body', 'sentAt', 'openedAt'])
+            'stampId', 'body', 'sentAt', 'openedAt'])
+          && freeStamp(d.stampId)
           && d.toUid is string
           && d.body is string && d.body.size() > 0 && d.body.size() <= 1000
           && d.sentAt == request.time

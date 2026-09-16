@@ -7,13 +7,13 @@ class LetterPaper extends StatelessWidget {
   const LetterPaper({
     super.key,
     required this.body,
-    this.postmark,
+    this.corner,
   });
 
   final String body;
 
-  /// Stamped in the top corner once the letter has been opened.
-  final Widget? postmark;
+  /// Top-right corner: the stamp, and the postmark over it once opened.
+  final Widget? corner;
 
   static const _fontSize = 16.0;
   static const _lineHeight = 1.9;
@@ -48,7 +48,7 @@ class LetterPaper extends StatelessWidget {
         painter: _PaperPainter(
           rule: scheme.outlineVariant,
           margin: scheme.outlineVariant.withValues(alpha: 0.5),
-          firstLineTop: _padding.top + (postmark == null ? 0 : _postmarkSpace),
+          firstLineTop: _padding.top + (corner == null ? 0 : _cornerSpace),
           lineHeight: _fontSize * _lineHeight,
           sidePadding: _padding.left,
         ),
@@ -57,10 +57,10 @@ class LetterPaper extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (postmark != null)
+              if (corner != null)
                 SizedBox(
-                  height: _postmarkSpace,
-                  child: Align(alignment: Alignment.topRight, child: postmark),
+                  height: _cornerSpace,
+                  child: Align(alignment: Alignment.topRight, child: corner),
                 ),
               SelectableText(body, style: style),
             ],
@@ -70,7 +70,7 @@ class LetterPaper extends StatelessWidget {
     );
   }
 
-  static const _postmarkSpace = 92.0;
+  static const _cornerSpace = 96.0;
 }
 
 class _PaperPainter extends CustomPainter {

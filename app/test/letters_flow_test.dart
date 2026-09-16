@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:incomodo/models/letter.dart';
 import 'package:incomodo/models/post.dart';
+import 'package:incomodo/models/stamp_design.dart';
 import 'package:incomodo/models/stamp_wallet.dart';
 import 'package:incomodo/models/user_profile.dart';
 import 'package:incomodo/providers/auth_provider.dart';
@@ -15,6 +16,7 @@ import 'package:incomodo/screens/letter_screen.dart';
 import 'package:incomodo/screens/letters_screen.dart';
 import 'package:incomodo/screens/write_letter_screen.dart';
 import 'package:incomodo/services/letter_service.dart';
+import 'package:incomodo/widgets/stamp_view.dart';
 
 /// The letter screens wired to fakes, so the whole path — list, open,
 /// write — is exercised without a device or Firebase.
@@ -129,6 +131,29 @@ void main() {
   });
 
   group('1通を開ける', () {
+    testWidgets('a sealed letter shows only who sent it and their stamp',
+        (tester) async {
+      await tester.pumpWidget(app(LetterScreen(
+        letter: Letter(
+          id: 'l1',
+          direction: LetterDirection.received,
+          counterpartUid: friend.uid,
+          counterpartDisplayName: friend.displayName,
+          counterpartHandle: friend.handle,
+          sentAt: now,
+          stampId: 'yoru',
+        ),
+      )));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byWidgetPredicate(
+            (w) => w is StampView && w.design == StampDesign.yoru),
+        findsOneWidget,
+      );
+      expect(find.text('差出人'), findsOneWidget);
+    });
+
     testWidgets('before checking your location, it offers to check',
         (tester) async {
       await tester.pumpWidget(app(LetterScreen(letter: letter())));
@@ -204,6 +229,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
+      await scrollTo(tester, find.text('送る'));
       await tester.tap(find.text('送る'));
       await tester.pumpAndSettle();
 
@@ -221,10 +247,45 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), '駅前のカフェで待ってる');
+      await scrollTo(tester, find.text('送る'));
       await tester.tap(find.text('送る'));
       await tester.pumpAndSettle();
 
       expect(service.sent, [('me', 'u2', '駅前のカフェで待ってる')]);
+      // Nothing chosen: the ordinary stamp.
+      expect(service.stamps, ['basic']);
+    });
+
+    testWidgets('the stamp you pick is the one stuck on the letter',
+        (tester) async {
+      final service = _FakeLetterService();
+      await tester.pumpWidget(app(
+        const WriteLetterScreen(to: friend),
+        friends: [friend],
+        letters: service,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('桜'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '春になったね');
+      await scrollTo(tester, find.text('送る'));
+      await tester.tap(find.text('送る'));
+      await tester.pumpAndSettle();
+
+      expect(service.stamps, ['sakura']);
+    });
+
+    testWidgets('every free stamp is offered', (tester) async {
+      await tester.pumpWidget(app(
+        const WriteLetterScreen(to: friend),
+        friends: [friend],
+      ));
+      await tester.pumpAndSettle();
+
+      for (final design in StampDesign.free) {
+        expect(find.text(design.name), findsOneWidget);
+      }
     });
 
     testWidgets('how many stamps are left is on the page', (tester) async {
@@ -252,12 +313,28 @@ void main() {
       expect(find.text('切手 0枚'), findsOneWidget);
       expect(find.textContaining('明日また'), findsOneWidget);
 
-      final button =
-          tester.widget<FilledButton>(find.byType(FilledButton).first);
+      await scrollTo(tester, find.text('切手がありません'));
+      final button = tester.widget<FilledButton>(find.ancestor(
+          of: find.text('切手がありません'), matching: find.byType(FilledButton)));
       expect(button.onPressed, isNull);
       expect(service.sent, isEmpty);
     });
   });
+}
+
+/// The write screen is taller than the test surface, and its list only
+/// builds what is on screen — so scroll the page (not the stamp row) until
+/// [finder] exists.
+Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    200,
+    scrollable: find
+        .byWidgetPredicate(
+            (w) => w is Scrollable && w.axisDirection == AxisDirection.down)
+        .first,
+  );
+  await tester.pumpAndSettle();
 }
 
 class _SignedIn extends ConsumerWidget {
@@ -290,6 +367,7 @@ class _FakeLetterService implements LetterService {
 
   final String body;
   final sent = <(String, String, String)>[];
+  final stamps = <String>[];
   final opened = <String>[];
 
   @override
@@ -297,10 +375,12 @@ class _FakeLetterService implements LetterService {
     required UserProfile from,
     required UserProfile to,
     required String body,
+    required StampDesign stamp,
   }) async {
     final error = Letter.validateBody(body);
     if (error != null) throw ArgumentError(error);
     sent.add((from.uid, to.uid, body.trim()));
+    stamps.add(stamp.id);
   }
 
   @override

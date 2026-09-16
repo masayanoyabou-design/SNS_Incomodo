@@ -43,7 +43,7 @@ void main() {
   testWidgets('an opened letter is stamped', (tester) async {
     await pump(
       tester,
-      LetterPaper(body: '駅前のカフェで待ってる', postmark: Postmark(date: openedOn)),
+      LetterPaper(body: '駅前のカフェで待ってる', corner: Postmark(date: openedOn)),
     );
 
     expect(find.text('2026.9.17'), findsOneWidget);

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/letter.dart';
+import '../models/stamp_design.dart';
 import '../models/stamp_wallet.dart';
 import '../models/user_profile.dart';
 import '../providers/letter_provider.dart';
 import '../providers/stamp_provider.dart';
 import '../providers/user_provider.dart';
+import '../widgets/stamp_view.dart';
 import 'friends_screen.dart';
 
 /// Write to one of your friends. You never choose a post: the letter is
@@ -25,6 +27,7 @@ class WriteLetterScreen extends ConsumerStatefulWidget {
 class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
   final _bodyController = TextEditingController();
   late UserProfile? _to = widget.to;
+  StampDesign _stamp = StampDesign.basic;
   String? _bodyError;
   bool _sending = false;
 
@@ -50,6 +53,7 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
             from: me,
             to: to,
             body: _bodyController.text,
+            stamp: _stamp,
           );
       if (!mounted) return;
       Navigator.pop(context);
@@ -132,6 +136,19 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
               onChanged: (value) => setState(() => _to = value),
             ),
             const SizedBox(height: 20),
+            Text('貼る切手', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 2),
+            Text(
+              '届いた手紙は、ポストで開けるまで切手しか見えません。',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            StampPicker(
+              designs: StampDesign.free,
+              selected: _stamp,
+              onSelected: (design) => setState(() => _stamp = design),
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _bodyController,
               maxLines: 12,

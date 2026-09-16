@@ -1,4 +1,5 @@
 import 'post.dart';
+import 'stamp_design.dart';
 
 /// Whose side of a letter we are looking at.
 enum LetterDirection { received, sent }
@@ -23,6 +24,7 @@ class Letter {
     required this.sentAt,
     this.openedAt,
     this.body,
+    this.stampId = StampDesign.defaultId,
   });
 
   static const maxBodyLength = 1000;
@@ -45,11 +47,21 @@ class Letter {
   /// a received letter only once it has been fetched after opening.
   final String? body;
 
+  /// The stamp the sender stuck on it — visible on the envelope even while
+  /// the letter is still sealed.
+  final String stampId;
+
+  StampDesign get stamp => StampDesign.byId(stampId);
+
   bool get isOpened => openedAt != null;
 
   String get counterpartHandleWithAt => '@$counterpartHandle';
 
-  Letter withBody(String? body) => Letter(
+  Letter withBody(String? body) => _copy(body: body, openedAt: openedAt);
+
+  Letter markOpened(DateTime at) => _copy(body: body, openedAt: at);
+
+  Letter _copy({required String? body, required DateTime? openedAt}) => Letter(
         id: id,
         direction: direction,
         counterpartUid: counterpartUid,
@@ -58,6 +70,7 @@ class Letter {
         sentAt: sentAt,
         openedAt: openedAt,
         body: body,
+        stampId: stampId,
       );
 
   /// The wording the PRD asks for: a sender sees delivery, then receipt.

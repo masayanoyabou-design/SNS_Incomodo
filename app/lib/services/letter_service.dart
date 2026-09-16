@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/letter.dart';
+import '../models/stamp_design.dart';
 import '../models/user_profile.dart';
 import 'stamp_service.dart';
 
@@ -36,6 +37,7 @@ class LetterService {
     required UserProfile from,
     required UserProfile to,
     required String body,
+    required StampDesign stamp,
   }) async {
     final error = Letter.validateBody(body);
     if (error != null) throw ArgumentError(error);
@@ -49,6 +51,7 @@ class LetterService {
             'fromUid': from.uid,
             'fromDisplayName': from.displayName,
             'fromHandle': from.handle,
+            'stampId': stamp.id,
             'sentAt': FieldValue.serverTimestamp(),
             'openedAt': null,
           })
@@ -57,6 +60,7 @@ class LetterService {
             'toUid': to.uid,
             'toDisplayName': to.displayName,
             'toHandle': to.handle,
+            'stampId': stamp.id,
             'body': trimmed,
             'sentAt': FieldValue.serverTimestamp(),
             'openedAt': null,
@@ -113,6 +117,7 @@ class LetterService {
       sentAt: sentAt?.toDate() ?? DateTime.now(),
       openedAt: openedAt?.toDate(),
       body: data['body'] as String?,
+      stampId: data['stampId'] as String? ?? StampDesign.defaultId,
     );
   }
 }

@@ -9,6 +9,7 @@ import '../providers/post_provider.dart';
 import '../widgets/letter_card.dart';
 import '../widgets/letter_paper.dart';
 import '../widgets/postmark.dart';
+import '../widgets/stamp_view.dart';
 
 /// One letter. A received letter stays sealed — its text isn't even on
 /// the phone — until you are standing at one of your finished posts.
@@ -63,15 +64,7 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
             .read(letterServiceProvider)
             .open(uid: _uid, letter: _letter);
         if (!mounted) return;
-        setState(() => _letter = Letter(
-              id: _letter.id,
-              direction: _letter.direction,
-              counterpartUid: _letter.counterpartUid,
-              counterpartDisplayName: _letter.counterpartDisplayName,
-              counterpartHandle: _letter.counterpartHandle,
-              sentAt: _letter.sentAt,
-              openedAt: DateTime.now(),
-            ));
+        setState(() => _letter = _letter.markOpened(DateTime.now()));
         final body = await ref
             .read(letterServiceProvider)
             .readBody(uid: _uid, letterId: _letter.id);
@@ -134,9 +127,8 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
       BuildContext context, Post? openable, Post? waitingAt, DateTime now) {
     return Column(
       children: [
-        Icon(Icons.mail_outline,
-            size: 72, color: Theme.of(context).colorScheme.outline),
-        const SizedBox(height: 16),
+        _Envelope(letter: _letter),
+        const SizedBox(height: 20),
         Text(
           switch ((openable, waitingAt)) {
             (final Post at, _) => '「${at.name}」に着いています。ここで開けます。',
@@ -185,7 +177,79 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
     final opened = _letter.openedAt;
     return LetterPaper(
       body: _body ?? '',
-      postmark: opened == null ? null : Postmark(date: opened),
+      corner: SizedBox(
+        width: 120,
+        height: 96,
+        child: Stack(
+          children: [
+            Positioned(
+              right: 4,
+              top: 0,
+              child: StampView(design: _letter.stamp, width: 64),
+            ),
+            // Struck across the stamp's lower-left, the way a postmark
+            // lands half on the stamp and half on the paper.
+            if (opened != null)
+              Positioned(
+                left: 0,
+                bottom: 0,
+                child: Postmark(date: opened, size: 72),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A sealed letter: all you have before reaching your post is who it is
+/// from and the stamp they chose.
+class _Envelope extends StatelessWidget {
+  const _Envelope({required this.letter});
+
+  final Letter letter;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      height: 170,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest,
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.18),
+            offset: const Offset(0, 12),
+            blurRadius: 28,
+            spreadRadius: -18,
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Align(
+            alignment: Alignment.topRight,
+            child: StampView(design: letter.stamp, width: 64),
+          ),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('差出人', style: theme.textTheme.labelSmall),
+                Text(
+                  '${letter.counterpartDisplayName}（${letter.counterpartHandleWithAt}）',
+                  style: theme.textTheme.titleSmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
