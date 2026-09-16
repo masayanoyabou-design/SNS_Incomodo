@@ -29,6 +29,7 @@ class Letter {
     this.stampId = StampDesign.defaultId,
     this.envelopeId = EnvelopeDesign.defaultId,
     this.paperId = PaperDesign.defaultId,
+    this.pending = false,
   });
 
   static const maxBodyLength = 1000;
@@ -75,6 +76,10 @@ class Letter {
 
   PaperDesign get paper => PaperDesign.byId(paperId);
 
+  /// Written on this phone but not yet confirmed by the server — sent while
+  /// out of signal, say. It goes out by itself once the connection is back.
+  final bool pending;
+
   bool get isOpened => openedAt != null;
 
   String get counterpartHandleWithAt => '@$counterpartHandle';
@@ -109,12 +114,14 @@ class Letter {
         stampId: stampId,
         envelopeId: envelopeId,
         paperId: paperId ?? this.paperId,
+        pending: pending,
       );
 
   static const _keep = Object();
 
   /// The wording the PRD asks for: a sender sees delivery, then receipt.
   String get statusLabel => switch ((direction, isOpened)) {
+        (LetterDirection.sent, false) when pending => '送信待ち',
         (LetterDirection.sent, false) => '配送完了',
         (LetterDirection.sent, true) => '受取完了',
         (LetterDirection.received, false) => '未開封',

@@ -33,4 +33,12 @@ void main() {
       throwsA(isA<StateError>()),
     );
   });
+
+  test('a write not confirmed in time is still on its way', () async {
+    await expectLater(
+      handOver(Completer<void>().future,
+          limit: const Duration(milliseconds: 10), message: '送信待ち'),
+      throwsA(isA<StillSendingException>()),
+    );
+  });
 }

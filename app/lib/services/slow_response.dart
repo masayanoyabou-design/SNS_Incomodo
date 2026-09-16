@@ -26,3 +26,22 @@ Future<T> answerWithin<T>(
   required String message,
 }) =>
     future.timeout(limit, onTimeout: () => throw SlowResponseException(message));
+
+/// A write that has been handed to Firestore but not yet confirmed by the
+/// server when the waiting stopped. It is queued on the phone and goes out
+/// by itself once the connection recovers — so the screen should treat it
+/// as on its way, and must not offer to do it again (a letter sent twice
+/// costs two stamps).
+class StillSendingException extends SlowResponseException {
+  const StillSendingException(super.message);
+}
+
+/// Waits for a Firestore [write] for at most [limit]. If it isn't confirmed
+/// by then, throws [StillSendingException] with [message]; the write itself
+/// carries on.
+Future<void> handOver(
+  Future<void> write, {
+  required Duration limit,
+  required String message,
+}) =>
+    write.timeout(limit, onTimeout: () => throw StillSendingException(message));

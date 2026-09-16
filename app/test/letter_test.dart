@@ -172,4 +172,19 @@ void main() {
     ]);
     expect(album.map((l) => l.id), ['late', 'early']);
   });
+
+  test('a letter the server has not confirmed is waiting to go', () {
+    expect(
+      Letter(
+        id: 'l1',
+        direction: LetterDirection.sent,
+        counterpartUid: 'u2',
+        counterpartDisplayName: '後藤',
+        counterpartHandle: 'goto',
+        sentAt: sentAt,
+        pending: true,
+      ).statusLabel,
+      '送信待ち',
+    );
+  });
 }

@@ -6,6 +6,7 @@ import '../models/post.dart';
 import '../providers/auth_provider.dart';
 import '../providers/letter_provider.dart';
 import '../providers/post_provider.dart';
+import '../services/slow_response.dart';
 import '../widgets/envelope_view.dart';
 import '../widgets/letter_card.dart';
 import '../widgets/letter_paper.dart';
@@ -46,7 +47,10 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text('失敗しました: $e')));
+          ..showSnackBar(SnackBar(
+              // A slow answer isn't a failure: it says what to do itself.
+              content: Text(
+                  e is SlowResponseException ? e.message : '失敗しました: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -69,9 +73,19 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
   }
 
   Future<void> _open(Post at) => _run(() async {
-        await ref
-            .read(letterServiceProvider)
-            .open(uid: _uid, letter: _letter, place: at.name);
+        try {
+          await ref
+              .read(letterServiceProvider)
+              .open(uid: _uid, letter: _letter, place: at.name);
+        } on StillSendingException {
+          // The opening is queued. Show it as opened so it isn't opened a
+          // second time; the text can't come until the server has it.
+          if (mounted) {
+            setState(() =>
+                _letter = _letter.markOpened(DateTime.now(), place: at.name));
+          }
+          rethrow;
+        }
         if (!mounted) return;
         setState(() =>
             _letter = _letter.markOpened(DateTime.now(), place: at.name));
@@ -111,9 +125,15 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
 
     var done = false;
     await _run(() async {
-      await ref
-          .read(letterServiceProvider)
-          .delete(uid: _uid, letter: _letter);
+      try {
+        await ref
+            .read(letterServiceProvider)
+            .delete(uid: _uid, letter: _letter);
+      } on StillSendingException {
+        // Queued: it will be gone once the connection is back.
+        done = true;
+        rethrow;
+      }
       done = true;
     });
     if (done && mounted) Navigator.of(context).pop();

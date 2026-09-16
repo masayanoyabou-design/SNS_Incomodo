@@ -5,6 +5,7 @@ import '../models/letter.dart';
 import '../models/stamp_design.dart';
 import '../models/stationery.dart';
 import '../models/user_profile.dart';
+import 'slow_response.dart';
 import 'stamp_service.dart';
 
 /// Letters, written in three pieces by one batch:
@@ -52,7 +53,8 @@ class LetterService {
     final trimmed = body.trim();
 
     final id = _received(to.uid).doc().id;
-    await (_firestore.batch()
+    await handOver(
+        (_firestore.batch()
           ..update(StampService.walletRef(_firestore, from.uid),
               {'count': FieldValue.increment(-1)})
           ..set(_received(to.uid).doc(id), {
@@ -76,8 +78,16 @@ class LetterService {
             'sentAt': FieldValue.serverTimestamp(),
             'openedAt': null,
           }))
-        .commit();
+        .commit(),
+        limit: _writeLimit,
+        message: '電波が戻りしだい、自動で届きます。「送った手紙」で「送信待ち」になっています。'
+            'もう一度送る必要はありません',
+    );
   }
+
+  /// How long a write is waited on before the screen moves on (B32). The
+  /// write itself isn't cancelled: it is queued and goes out later.
+  static const _writeLimit = Duration(seconds: 20);
 
   Stream<List<Letter>> watchReceived(String uid) =>
       _received(uid).orderBy('sentAt', descending: true).snapshots().map(
@@ -86,12 +96,14 @@ class LetterService {
                 .toList(),
           );
 
-  Stream<List<Letter>> watchSent(String uid) =>
-      _sent(uid).orderBy('sentAt', descending: true).snapshots().map(
-            (s) => s.docs
-                .map((doc) => _toLetter(doc, LetterDirection.sent))
-                .toList(),
-          );
+  /// Includes letters the server hasn't confirmed yet, marked pending, so one
+  /// sent without signal shows as waiting instead of looking delivered.
+  Stream<List<Letter>> watchSent(String uid) => _sent(uid)
+      .orderBy('sentAt', descending: true)
+      .snapshots(includeMetadataChanges: true)
+      .map((s) => s.docs
+          .map((doc) => _toLetter(doc, LetterDirection.sent))
+          .toList());
 
   /// Marks a letter opened, on both copies, so the sender sees "受取完了".
   ///
@@ -110,19 +122,28 @@ class LetterService {
       'openedAt': FieldValue.serverTimestamp(),
       'openedPlace': place,
     };
-    try {
-      await (_firestore.batch()
-            ..update(mine, opening)
-            ..update(_sent(letter.counterpartUid).doc(letter.id),
-                {'openedAt': FieldValue.serverTimestamp()}))
-          .commit();
-    } on FirebaseException catch (e) {
+    final both = (_firestore.batch()
+          ..update(mine, opening)
+          ..update(_sent(letter.counterpartUid).doc(letter.id),
+              {'openedAt': FieldValue.serverTimestamp()}))
+        .commit();
+    // The fallback hangs off the write itself rather than the waiting, so it
+    // still happens if the refusal only arrives after the screen gave up.
+    final opened = both.then<void>((_) {}, onError: (Object e) {
       // The sender may have thrown their copy away (B25). Nobody is left to
       // tell, but that mustn't stop the letter being opened.
-      if (e.code != 'not-found' && e.code != 'permission-denied') rethrow;
+      if (e is! FirebaseException ||
+          (e.code != 'not-found' && e.code != 'permission-denied')) {
+        throw e;
+      }
       debugPrint('Sender\'s copy of ${letter.id} is gone; opening ours only');
-      await mine.update(opening);
-    }
+      return mine.update(opening);
+    });
+    await handOver(
+      opened,
+      limit: _writeLimit,
+      message: '開封を受け付けました。電波が戻ると、手紙が読めるようになります',
+    );
   }
 
   /// Throws a letter away — only your own copy (B25).
@@ -131,13 +152,17 @@ class LetterService {
   /// then never read. A sent letter only loses the sender's copy: what was
   /// delivered stays with the recipient.
   Future<void> delete({required String uid, required Letter letter}) =>
-      switch (letter.direction) {
-        LetterDirection.received => (_firestore.batch()
-              ..delete(_body(uid, letter.id))
-              ..delete(_received(uid).doc(letter.id)))
-            .commit(),
-        LetterDirection.sent => _sent(uid).doc(letter.id).delete(),
-      };
+      handOver(
+        switch (letter.direction) {
+          LetterDirection.received => (_firestore.batch()
+                ..delete(_body(uid, letter.id))
+                ..delete(_received(uid).doc(letter.id)))
+              .commit(),
+          LetterDirection.sent => _sent(uid).doc(letter.id).delete(),
+        },
+        limit: _writeLimit,
+        message: '電波が戻ると、手紙が一覧から消えます',
+      );
 
   /// Fetches what is inside a received letter: its text and the paper it is
   /// written on. The server only answers once the letter has been opened.
@@ -145,7 +170,12 @@ class LetterService {
     required String uid,
     required String letterId,
   }) async {
-    final data = (await _body(uid, letterId).get()).data();
+    final data = (await answerWithin(
+      _body(uid, letterId).get(),
+      limit: const Duration(seconds: 15),
+      message: '手紙を読み込めませんでした。電波の良い場所で、開き直してください',
+    ))
+        .data();
     final body = data?['body'] as String?;
     if (body == null) return null;
     return (
@@ -178,6 +208,7 @@ class LetterService {
       // Only the sender's copy has it; a received letter learns its paper
       // from readContents once opened.
       paperId: data['paperId'] as String? ?? PaperDesign.defaultId,
+      pending: doc.metadata.hasPendingWrites,
     );
   }
 }

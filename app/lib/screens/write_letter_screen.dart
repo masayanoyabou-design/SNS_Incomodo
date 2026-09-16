@@ -9,6 +9,7 @@ import '../models/user_profile.dart';
 import '../providers/letter_provider.dart';
 import '../providers/stamp_provider.dart';
 import '../providers/user_provider.dart';
+import '../services/slow_response.dart';
 import '../widgets/design_picker.dart';
 import '../widgets/envelope_view.dart';
 import '../widgets/letter_paper.dart';
@@ -66,6 +67,12 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
       if (!mounted) return;
       Navigator.pop(context);
       _showMessage('${to.displayName}さんのポストへ送りました');
+    } on StillSendingException catch (e) {
+      // Queued, and will go out by itself. Leaving the screen is what stops
+      // it being sent again — a second letter would cost a second stamp.
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showMessage(e.message);
     } catch (e) {
       debugPrint('Sending a letter failed: $e');
       _showMessage('送れませんでした: $e');

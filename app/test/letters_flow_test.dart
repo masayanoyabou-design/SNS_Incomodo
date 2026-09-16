@@ -18,6 +18,7 @@ import 'package:incomodo/screens/letter_screen.dart';
 import 'package:incomodo/screens/letters_screen.dart';
 import 'package:incomodo/screens/write_letter_screen.dart';
 import 'package:incomodo/services/letter_service.dart';
+import 'package:incomodo/services/slow_response.dart';
 import 'package:incomodo/widgets/envelope_view.dart';
 import 'package:incomodo/widgets/postmark.dart';
 import 'package:incomodo/widgets/stamp_view.dart';
@@ -315,6 +316,99 @@ void main() {
     });
   });
 
+  group('電波がないとき（B32）', () {
+    Widget opener(Widget screen) => Scaffold(
+          // Where the app shows what happened once the screen has closed.
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => screen)),
+              child: const Text('ひらく'),
+            ),
+          ),
+        );
+
+    testWidgets('a letter still on its way closes the screen, so it is not '
+        'sent twice', (tester) async {
+      final service = _FakeLetterService(stillSending: true);
+      await tester.pumpWidget(app(
+        opener(const WriteLetterScreen(to: friend)),
+        friends: [friend],
+        letters: service,
+      ));
+      await tester.tap(find.text('ひらく'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '圏外から');
+      await scrollTo(tester, find.text('送る'));
+      await tester.tap(find.text('送る'));
+      await tester.pumpAndSettle();
+
+      expect(service.sent, hasLength(1));
+      expect(find.byType(WriteLetterScreen), findsNothing);
+      expect(find.textContaining('もう一度送る必要はありません'), findsOneWidget);
+    });
+
+    testWidgets('an opening still on its way cannot be done again',
+        (tester) async {
+      final service = _FakeLetterService(stillSending: true);
+      await tester.pumpWidget(app(
+        LetterScreen(letter: letter()),
+        posts: {PostSlot.home: home},
+        here: (latitude: 35.0, longitude: 139.0),
+        letters: service,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('ここで開ける'));
+      await tester.pumpAndSettle();
+
+      expect(service.opened, hasLength(1));
+      expect(find.text('ここで開ける'), findsNothing);
+      expect(find.textContaining('開封を受け付けました'), findsOneWidget);
+    });
+
+    testWidgets('throwing away still on its way leaves the letter screen',
+        (tester) async {
+      final service = _FakeLetterService(stillSending: true);
+      await tester.pumpWidget(
+          app(opener(LetterScreen(letter: letter())), letters: service));
+      await tester.tap(find.text('ひらく'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('手紙を捨てる'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('捨てる'));
+      await tester.pumpAndSettle();
+
+      expect(service.deleted, hasLength(1));
+      expect(find.byType(LetterScreen), findsNothing);
+    });
+
+    testWidgets('a letter not yet confirmed shows as waiting in the list',
+        (tester) async {
+      await tester.pumpWidget(app(
+        const LettersScreen(),
+        sent: [
+          Letter(
+            id: 'l9',
+            direction: LetterDirection.sent,
+            counterpartUid: friend.uid,
+            counterpartDisplayName: friend.displayName,
+            counterpartHandle: friend.handle,
+            sentAt: now,
+            pending: true,
+          ),
+        ],
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('送った手紙'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('送信待ち'), findsOneWidget);
+    });
+  });
+
   group('手紙を書く', () {
     testWidgets('with nobody to write to, it points at the friends screen',
         (tester) async {
@@ -497,9 +591,16 @@ class _FixedHere extends HereNotifier {
 }
 
 class _FakeLetterService implements LetterService {
-  _FakeLetterService({this.body = ''});
+  _FakeLetterService({this.body = '', this.stillSending = false});
 
   final String body;
+
+  /// Every write is queued but not confirmed in time, as without signal.
+  final bool stillSending;
+
+  void _maybeStillSending(String message) {
+    if (stillSending) throw StillSendingException(message);
+  }
   final sent = <(String, String, String)>[];
   final stamps = <String>[];
   final stationery = <(String envelope, String paper)>[];
@@ -520,6 +621,7 @@ class _FakeLetterService implements LetterService {
     sent.add((from.uid, to.uid, body.trim()));
     stamps.add(stamp.id);
     stationery.add((envelope.id, paper.id));
+    _maybeStillSending('電波が戻りしだい、自動で届きます。もう一度送る必要はありません');
   }
 
   @override
@@ -527,12 +629,16 @@ class _FakeLetterService implements LetterService {
     required String uid,
     required Letter letter,
     required String place,
-  }) async =>
-      opened.add((letter.id, place));
+  }) async {
+    opened.add((letter.id, place));
+    _maybeStillSending('開封を受け付けました。電波が戻ると、手紙が読めるようになります');
+  }
 
   @override
-  Future<void> delete({required String uid, required Letter letter}) async =>
-      deleted.add((letter.id, letter.direction));
+  Future<void> delete({required String uid, required Letter letter}) async {
+    deleted.add((letter.id, letter.direction));
+    _maybeStillSending('電波が戻ると、手紙が一覧から消えます');
+  }
 
   @override
   Future<({String body, String paperId})?> readContents({
