@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/post.dart';
 import '../providers/auth_provider.dart';
 import '../providers/post_provider.dart';
+import '../providers/user_provider.dart';
 import '../widgets/post_slot_card.dart';
+import 'friends_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -174,7 +176,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authStateProvider).value;
+    final profile = ref.watch(myProfileProvider).value;
     final posts = ref.watch(postsProvider);
     final now = ref.watch(clockProvider).value ?? DateTime.now();
 
@@ -182,6 +184,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: const Text('Incomodo'),
         actions: [
+          IconButton(
+            tooltip: '友だち',
+            icon: const Icon(Icons.people_outline),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FriendsScreen()),
+            ),
+          ),
           IconButton(
             tooltip: 'ログアウト',
             icon: const Icon(Icons.logout),
@@ -193,7 +202,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         data: (posts) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('ようこそ、${user?.displayName ?? 'ゲスト'}さん',
+            Text('ようこそ、${profile?.displayName ?? 'ゲスト'}さん',
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
             const Text('手紙の受け取り場所（ポスト）を最大4箇所まで登録できます。'

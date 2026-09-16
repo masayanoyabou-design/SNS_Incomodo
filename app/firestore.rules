@@ -7,6 +7,50 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // Public identity: the name on letters and the handle people search for.
+    // Readable by any signed-in user so a handle can be resolved to a person.
+    match /users/{uid} {
+      function validProfile() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['displayName', 'handle'])
+          && d.displayName is string
+          && d.displayName.size() > 0 && d.displayName.size() <= 20
+          && d.handle is string && d.handle.matches('^[a-z0-9_]{3,15}$');
+      }
+
+      allow read: if request.auth != null;
+      allow create: if signedInAs(uid) && validProfile();
+      // The handle is claimed once; only the display name can change later.
+      allow update: if signedInAs(uid) && validProfile()
+        && request.resource.data.handle == resource.data.handle;
+    }
+
+    // Handle reservations, so two people can't claim the same one.
+    match /handles/{handle} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+    }
+
+    // Friends of {uid}: only {uid} decides who is on this list, and being
+    // on it is what lets someone deliver letters to {uid}.
+    match /users/{uid}/friends/{friendUid} {
+      allow read, write: if signedInAs(uid);
+    }
+
+    // Connection requests: anyone signed in may ask, but only under their
+    // own ID, and only {uid} can read or clear them.
+    match /users/{uid}/friendRequests/{fromUid} {
+      allow read, delete: if signedInAs(uid);
+      // Update is allowed too, so re-sending a request just refreshes it.
+      allow create, update: if request.auth != null
+        && fromUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+    }
+
     // A user's mailboxes (PRD F-01). Fixed slot IDs cap each user at four,
     // with exactly one home. Construction timing is server-enforced so a
     // client can't skip the 48-hour wait by sending a backdated timestamp.

@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
+import 'providers/user_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/profile_setup_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,20 +28,30 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Shows [LoginScreen] or [HomeScreen] depending on the current auth state.
+/// Routes between signing in, the one-time profile setup, and the app.
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateProvider);
+    const loading = Scaffold(body: Center(child: CircularProgressIndicator()));
 
-    return authState.when(
-      data: (user) => user == null ? const LoginScreen() : const HomeScreen(),
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, stack) => Scaffold(
-        body: Center(child: Text('エラーが発生しました: $error')),
-      ),
-    );
+    return ref.watch(authStateProvider).when(
+          loading: () => loading,
+          error: (error, _) => _error(error),
+          data: (user) {
+            if (user == null) return const LoginScreen();
+            return ref.watch(myProfileProvider).when(
+                  loading: () => loading,
+                  error: (error, _) => _error(error),
+                  data: (profile) => profile == null
+                      ? const ProfileSetupScreen()
+                      : const HomeScreen(),
+                );
+          },
+        );
   }
+
+  Widget _error(Object error) =>
+      Scaffold(body: Center(child: Text('エラーが発生しました: $error')));
 }
