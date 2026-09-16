@@ -10,6 +10,7 @@ class PostSlotCard extends StatelessWidget {
     required this.post,
     required this.now,
     required this.busy,
+    required this.distanceMeters,
     required this.onRegister,
     required this.onRename,
     required this.onMove,
@@ -20,6 +21,9 @@ class PostSlotCard extends StatelessWidget {
   final Post? post;
   final DateTime now;
   final bool busy;
+
+  /// Distance from the viewer's last known location, or null if unknown.
+  final double? distanceMeters;
   final VoidCallback onRegister;
   final VoidCallback onRename;
   final VoidCallback onMove;
@@ -71,6 +75,7 @@ class PostSlotCard extends StatelessWidget {
                   color: active ? Colors.green.shade700 : Colors.orange.shade800,
                 ),
               ),
+              if (distanceMeters != null) _buildDistance(context, post),
             ],
           ),
         ),
@@ -86,6 +91,44 @@ class PostSlotCard extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildDistance(BuildContext context, Post post) {
+    final distance = distanceMeters!;
+    final arrived = distance <= Post.unlockRadiusMeters;
+    final canOpen = arrived && post.isActive(now);
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Icon(
+            arrived ? Icons.where_to_vote : Icons.directions_walk,
+            size: 16,
+            color: canOpen
+                ? Colors.green.shade700
+                : Theme.of(context).textTheme.bodySmall?.color,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              canOpen
+                  ? 'ポストに到着（ここで手紙を開けます）'
+                  : arrived
+                      ? 'ポストに到着（工事が終わるまで開けません）'
+                      : '現在地から約${_formatDistance(distance)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: canOpen ? Colors.green.shade700 : null,
+                    fontWeight: canOpen ? FontWeight.bold : null,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _formatDistance(double meters) => meters < 1000
+      ? '${meters.round()}m'
+      : '${(meters / 1000).toStringAsFixed(1)}km';
 
   static String _formatRemaining(Duration d) {
     final hours = d.inHours;

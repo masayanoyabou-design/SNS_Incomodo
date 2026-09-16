@@ -50,6 +50,65 @@ void main() {
     });
   });
 
+  group('unlock radius', () {
+    // Tokyo Station. 0.001 degrees of latitude is about 111 m.
+    const postLat = 35.6812;
+    const postLng = 139.7671;
+    final activeNow = startedAt.add(const Duration(hours: 49));
+
+    Post postAt() => Post(
+          slot: PostSlot.home,
+          name: '自宅',
+          latitude: postLat,
+          longitude: postLng,
+          constructionStartedAt: startedAt,
+        );
+
+    test('distance to the same point is zero', () {
+      expect(postAt().distanceFrom(postLat, postLng), closeTo(0, 0.1));
+    });
+
+    test('0.001 degrees of latitude is about 111 m', () {
+      expect(
+        postAt().distanceFrom(postLat + 0.001, postLng),
+        closeTo(111, 1),
+      );
+    });
+
+    test('30 m away is inside the radius, 80 m away is outside', () {
+      // 0.00027 deg ≈ 30 m, 0.00072 deg ≈ 80 m.
+      expect(postAt().isWithinUnlockRadius(postLat + 0.00027, postLng), isTrue);
+      expect(postAt().isWithinUnlockRadius(postLat + 0.00072, postLng), isFalse);
+    });
+
+    test('an active post within the radius can be opened', () {
+      expect(
+        postAt().canOpenLetters(
+            now: activeNow, latitude: postLat, longitude: postLng),
+        isTrue,
+      );
+    });
+
+    test('standing at a post still under construction cannot be opened', () {
+      expect(
+        postAt().canOpenLetters(
+          now: startedAt.add(const Duration(hours: 47)),
+          latitude: postLat,
+          longitude: postLng,
+        ),
+        isFalse,
+      );
+    });
+
+    test('an active post cannot be opened from far away', () {
+      expect(
+        postAt().canOpenLetters(
+            now: activeNow, latitude: postLat + 0.01, longitude: postLng),
+        isFalse,
+      );
+    });
+  });
+
   group('validate', () {
     String? check({String name = '会社', double lat = 35.0, double lng = 139.0}) =>
         Post.validate(name: name, latitude: lat, longitude: lng);

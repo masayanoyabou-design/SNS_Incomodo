@@ -16,6 +16,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _busy = false;
 
+  /// Last checked location, used to show how far each post is. Only ever
+  /// set by an explicit tap — Incomodo doesn't track you in the background.
+  ({double latitude, double longitude})? _here;
+
   String get _uid => ref.read(authStateProvider).value!.uid;
 
   Future<void> _run(String successMessage, Future<void> Function() action) async {
@@ -48,6 +52,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           latitude: position.latitude,
           longitude: position.longitude,
         );
+  }
+
+  Future<void> _checkHere() async {
+    await _run('現在地を確認しました', () async {
+      final position =
+          await ref.read(locationServiceProvider).getCurrentPosition();
+      if (!mounted) return;
+      setState(() => _here =
+          (latitude: position.latitude, longitude: position.longitude));
+    });
   }
 
   Future<void> _register(PostSlot slot) async {
@@ -183,14 +197,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
             const Text('手紙の受け取り場所（ポスト）を最大4箇所まで登録できます。'
-                '登録・移設から48時間は工事中で、手紙を受け取れません。'),
+                '登録・移設から48時間は工事中で、手紙を受け取れません。'
+                '手紙はポストから50m以内でしか開けません。'),
             const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: _busy ? null : _checkHere,
+                icon: const Icon(Icons.my_location, size: 18),
+                label: Text(_here == null ? 'ポストに着いたか確認' : '現在地を確認し直す'),
+              ),
+            ),
+            const SizedBox(height: 8),
             for (final slot in PostSlot.values)
               PostSlotCard(
                 slot: slot,
                 post: posts[slot],
                 now: now,
                 busy: _busy,
+                distanceMeters: _here == null || posts[slot] == null
+                    ? null
+                    : posts[slot]!
+                        .distanceFrom(_here!.latitude, _here!.longitude),
                 onRegister: () => _register(slot),
                 onRename: () => _rename(posts[slot]!),
                 onMove: () => _move(posts[slot]!),
