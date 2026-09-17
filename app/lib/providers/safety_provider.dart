@@ -18,3 +18,16 @@ final blockedProvider = StreamProvider<List<UserProfile>>((ref) {
   if (user == null) return Stream.value(const []);
   return ref.watch(safetyServiceProvider).watchBlocked(user.uid);
 });
+
+/// Whether the operator has suspended the signed-in account (B35), by
+/// creating `suspended/{uid}` in the Firebase console. Anything short of a
+/// clear yes — loading, offline — counts as no: the rules enforce it anyway.
+final suspendedProvider = StreamProvider<bool>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return Stream.value(false);
+  return FirebaseFirestore.instance
+      .collection('suspended')
+      .doc(user.uid)
+      .snapshots()
+      .map((doc) => doc.exists);
+});

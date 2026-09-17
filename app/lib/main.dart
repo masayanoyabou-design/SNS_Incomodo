@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
+import 'providers/safety_provider.dart';
 import 'providers/user_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_setup_screen.dart';
+import 'screens/suspended_screen.dart';
 import 'screens/update_required_screen.dart';
 import 'theme/incomodo_theme.dart';
 
@@ -52,7 +54,9 @@ class AuthGate extends ConsumerWidget {
                   error: (error, _) => _error(error),
                   data: (profile) => profile == null
                       ? const ProfileSetupScreen()
-                      : const HomeScreen(),
+                      : ref.watch(suspendedProvider).value == true
+                          ? const SuspendedScreen()
+                          : const HomeScreen(),
                 );
           },
         );

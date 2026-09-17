@@ -45,6 +45,18 @@ service cloud.firestore {
         && request.resource.data.blockedAt == request.time;
     }
 
+    // Accounts the operator has suspended after a report (B35), created in
+    // the Firebase console. The account can still sign in, see what it has
+    // and delete itself, but reaches nobody: no letters, no requests.
+    match /suspended/{uid} {
+      allow read: if signedInAs(uid);
+      allow write: if false;
+    }
+
+    function suspended() {
+      return exists(/databases/$(database)/documents/suspended/$(request.auth.uid));
+    }
+
     function blockedBy(uid) {
       return exists(/databases/$(database)/documents/users/$(uid)/blocked/$(request.auth.uid));
     }
@@ -98,6 +110,7 @@ service cloud.firestore {
       allow create, update: if request.auth != null
         && fromUid == request.auth.uid
         && !blockedBy(uid)
+        && !suspended()
         && request.resource.data.keys()
             .hasOnly(['displayName', 'handle', 'createdAt', 'reply'])
         && request.resource.data.createdAt == request.time
@@ -218,6 +231,7 @@ service cloud.firestore {
       allow read, delete: if signedInAs(uid);
       allow create: if request.auth != null
         && validLetter() && acceptedByRecipient() && !blockedBy(uid)
+        && !suspended()
         && stampSpent();
       allow update: if signedInAs(uid) && onlyOpens();
 

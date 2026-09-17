@@ -977,6 +977,48 @@ Future<void> main() async {
     () => commit([remove('users/$erase/meta/firstPost')], as: erase),
   );
 
+  print('');
+  print('利用停止（B35）');
+  await deny(
+    'nobody can suspend an account from the app',
+    () => commit([set('suspended/$bob', {})], as: alice),
+  );
+  await deny(
+    'nor lift their own suspension',
+    () => commit([remove('suspended/$bob')], as: bob),
+  );
+  await commit([
+    set('suspended/$bob', {'reason': str('通報r1')}),
+    set('users/$bob/stamps/wallet', purse(5, today)),
+  ], as: 'owner');
+  await allow(
+    'a suspended account can see that it is suspended',
+    () => read('suspended/$bob', as: bob),
+  );
+  await deny(
+    'but not what is written about someone else',
+    () => read('suspended/$bob', as: carol),
+  );
+  await deny(
+    'a suspended account cannot deliver letters, even to a friend',
+    () => commit(stamped('l30', bob), as: bob),
+  );
+  await deny(
+    'nor send friend requests',
+    () => commit([
+      set(
+        'users/$carol/friendRequests/$bob',
+        {'displayName': str('ボブ'), 'handle': str('bob')},
+        serverTimestamps: ['createdAt'],
+      ),
+    ], as: bob),
+  );
+  await commit([remove('suspended/$bob')], as: 'owner');
+  await allow(
+    'once lifted, letters go again',
+    () => commit(stamped('l31', bob), as: bob),
+  );
+
   _client.close();
   print('');
   print('$_passed passed, ${_failures.length} failed');
