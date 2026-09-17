@@ -441,6 +441,15 @@
       </div>
 
       <div class="issue">
+        <input type="checkbox" id="i35" checked>
+        <div class="issue-body">
+          <p>違反した利用者を利用停止にする手段がない</p>
+          <p class="why"><b>実装（2026-09-17、MANUAL 36章）。</b>Firebaseコンソールで<code>suspended</code>コレクションにその人のuidのドキュメントを作ると、手紙と友だちリクエストがルールで拒否され、アプリは「利用停止中」の画面になる。削除すれば解除。</p>
+        </div>
+        <span class="tag note">要対応</span>
+      </div>
+
+      <div class="issue">
         <input type="checkbox" id="i27">
         <div class="issue-body">
           <p>実機での通し確認：手紙の「開封」だけ未確認</p>
@@ -453,7 +462,7 @@
         <input type="checkbox" id="i22" checked>
         <div class="issue-body">
           <p>セキュリティルールが「不正を拒否できるか」が未検証</p>
-          <p class="why">Firestoreエミュレータに対して2人のユーザーを名乗ってリクエストを送る検証スクリプト（`app/tool/rules_check.dart`）を用意し、96件が通過。工事の日時を過去にする・5つ目のポストを作る・他人のポストを書き換える・友だちでない人に手紙を送る・未開封の本文を読む・切手を使わずに送る、などが拒否されることを確認済み。Node.js不要でDartとエミュレータだけで動く（MANUAL 19章）。</p>
+          <p class="why">Firestoreエミュレータに対して2人のユーザーを名乗ってリクエストを送る検証スクリプト（`app/tool/rules_check.dart`）を用意し、103件が通過。工事の日時を過去にする・5つ目のポストを作る・他人のポストを書き換える・友だちでない人に手紙を送る・未開封の本文を読む・切手を使わずに送る、などが拒否されることを確認済み。Node.js不要でDartとエミュレータだけで動く（MANUAL 19章）。</p>
         </div>
         <span class="tag note">要対応</span>
       </div>
@@ -570,7 +579,7 @@
         <input type="checkbox" id="i15">
         <div class="issue-body">
           <p>利用規約・コミュニティガイドラインが未作成</p>
-          <p class="why"><b>下書きを作成（2026-09-17、MANUAL 32章、<code>terms.html</code>、LP未掲載）。</b>今の仕様（ポスト・工事期間・50m・切手・通知なし）に合わせ、相手の場所を探る・会うことを強要する・位置情報の偽装などを禁止事項に入れた。残り：対象年齢、有料アイテムの払い戻し、管轄裁判所を決める／通報・ブロック（B33）と退会（B34）の実装／専門家のレビュー。</p>
+          <p class="why"><b>アプリ用プライバシーポリシーの下書き（<code>privacy-app.html</code>、MANUAL 37章）も作成。</b><b>下書きを作成（2026-09-17、MANUAL 32章、<code>terms.html</code>、LP未掲載）。</b>今の仕様（ポスト・工事期間・50m・切手・通知なし）に合わせ、相手の場所を探る・会うことを強要する・位置情報の偽装などを禁止事項に入れた。残り：対象年齢、有料アイテムの払い戻し、管轄裁判所を決める／通報・ブロック（B33）と退会（B34）の実装／専門家のレビュー。</p>
         </div>
         <span class="tag future">検討中</span>
       </div>
@@ -639,10 +648,10 @@
       </div>
 
       <div class="issue">
-        <input type="checkbox" id="i24">
+        <input type="checkbox" id="i24" checked>
         <div class="issue-body">
           <p>QRコードの「読み取り」がアプリ内に未実装</p>
-          <p class="why">自分のQRを表示する側と、招待リンクを貼り付けて探す側は実装済み（P3-3B）。カメラで読み取る機能は、エミュレータで検証できず権限も増えるため見送った。スマホ標準のカメラでQRを読めばLPが開き、そこで相手のIDを確認できるので当面は成立する。実機テストができる段階で追加を判断する。</p>
+          <p class="why"><b>実装（2026-09-17、MANUAL 38章、実機は未確認）。</b>友だち画面の検索欄の横のボタンから、カメラで招待QRを読むとIDが入力される。街のポスターなど他のQRを誤って読まないよう、招待サイトのリンクか「@ID」だけを読む。</p>
         </div>
         <span class="tag future">検討中</span>
       </div>
