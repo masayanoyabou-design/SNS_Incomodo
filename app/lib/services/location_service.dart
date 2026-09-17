@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../firebase_emulators.dart';
 import 'slow_response.dart';
 
 class LocationException implements Exception {
@@ -17,6 +18,22 @@ class LocationException implements Exception {
 class LocationService {
   /// Returns the device's current position, asking for permission if needed.
   Future<Position> getCurrentPosition() async {
+    if (testLocation() case final at?) {
+      return Position(
+        latitude: at.latitude,
+        longitude: at.longitude,
+        timestamp: DateTime.now(),
+        accuracy: 5,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+        isMocked: true,
+      );
+    }
+
     // These two only ask the phone, and normally answer at once. On a
     // struggling phone they once never answered, leaving registration
     // spinning with no way out. (Asking for permission gets no limit: that
