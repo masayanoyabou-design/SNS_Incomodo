@@ -8,6 +8,7 @@ import '../providers/safety_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/invite_card.dart';
 import '../widgets/safety_actions.dart';
+import 'scan_invite_screen.dart';
 
 /// Show your invite, find people by ID or invite link, answer connection
 /// requests, and see who you can exchange letters with.
@@ -79,6 +80,17 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                 : null;
       });
     });
+  }
+
+  /// Scans a friend's invite QR (B24), then searches for them as if their
+  /// ID had been typed — the request itself is still the user's to send.
+  Future<void> _scan() async {
+    final handle = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const ScanInviteScreen()),
+    );
+    if (handle == null || !mounted) return;
+    _searchController.text = '@$handle';
+    await _search();
   }
 
   Future<void> _request(UserProfile target) async {
@@ -157,7 +169,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   onSubmitted: (_) => _search(),
                 ),
               ),
-              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'QRコードを読み取る',
+                icon: const Icon(Icons.qr_code_scanner),
+                onPressed: _busy ? null : _scan,
+              ),
               FilledButton(
                 onPressed: _busy ? null : _search,
                 child: const Text('探す'),

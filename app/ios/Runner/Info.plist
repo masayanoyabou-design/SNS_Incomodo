@@ -8,6 +8,8 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>Incomodo</string>
+	<key>NSCameraUsageDescription</key>
+	<string>友だちの招待QRコードを読み取るためにカメラを使用します。</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>手紙の受け取り場所（ポスト）の登録と、ポストに着いたかどうかの確認に現在地を使用します。</string>
 	<key>CFBundleExecutable</key>
