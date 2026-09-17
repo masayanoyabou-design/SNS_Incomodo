@@ -17,6 +17,7 @@ import '../services/slow_response.dart';
 import '../widgets/post_slot_card.dart';
 import 'friends_screen.dart';
 import 'letters_screen.dart';
+import 'post_map_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -336,13 +337,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 '48時間の工事が終わるまで手紙を開けません。'
                 '手紙はポストから50m以内でしか開けません。'),
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: _busy ? null : _checkHere,
-                icon: const Icon(Icons.my_location, size: 18),
-                label: Text(here == null ? 'ポストに着いたか確認' : '現在地を確認し直す'),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _checkHere,
+                  icon: const Icon(Icons.my_location, size: 18),
+                  label: Text(here == null ? 'ポストに着いたか確認' : '現在地を確認し直す'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PostMapScreen()),
+                  ),
+                  icon: const Icon(Icons.map_outlined, size: 18),
+                  label: const Text('地図で見る'),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             for (final slot in PostSlot.values)
