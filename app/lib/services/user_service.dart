@@ -120,7 +120,15 @@ class UserService {
     });
     await requestRef.delete();
     if (!wasReply) {
-      await sendFriendRequest(from: me, targetUid: requester.uid, reply: true);
+      try {
+        await sendFriendRequest(
+            from: me, targetUid: requester.uid, reply: true);
+      } on FirebaseException catch (e) {
+        // They may have blocked us since asking (B33). Accepting has still
+        // happened; only the request back can't go, and saying "failed"
+        // would both mislead and hint at the block.
+        if (e.code != 'permission-denied') rethrow;
+      }
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'auth_service.dart';
+import 'slow_response.dart';
 
 /// Deleting an account from inside the app (B34), as both app stores
 /// require.
@@ -23,6 +24,19 @@ class AccountService {
   /// Firestore allows 500 writes to a batch; stay well inside it.
   static const _batchSize = 400;
 
+  static const serverOnly = GetOptions(source: Source.server);
+
+  /// Every step waits for the server. The sign-in account is only removed
+  /// once the data is confirmed gone: removed any earlier, deletes still
+  /// queued on the phone could never be sent, and the data would be left
+  /// behind with nobody able to reach it.
+  static Future<T> _confirmed<T>(Future<T> step) => answerWithin(
+        step,
+        limit: const Duration(seconds: 30),
+        message: '通信に時間がかかったため、削除を中断しました。'
+            '電波の良い場所で、もう一度「アカウントを削除」をお試しください',
+      );
+
   DocumentReference<Map<String, dynamic>> _user(String uid) =>
       _firestore.collection('users').doc(uid);
 
@@ -37,16 +51,21 @@ class AccountService {
   }) async {
     await _auth.reauthenticateWithGoogle();
 
+    // From the server only: a cached list may be missing documents, and
+    // whatever it misses would outlive the account.
+    Future<QuerySnapshot<Map<String, dynamic>>> list(String name) =>
+        _confirmed(_user(uid).collection(name).get(serverOnly));
+
     final refs = <DocumentReference<Map<String, dynamic>>>[];
     for (final name in ['friends', 'friendRequests', 'blocked', 'posts',
         'sentLetters']) {
-      refs.addAll((await _user(uid).collection(name).get()).docs
+      refs.addAll((await list(name)).docs
           .map((d) => d.reference));
     }
     // A received letter's text is a subdocument, and it would outlive its
     // envelope. Its path is known, so it can go without being read — which
     // the rules wouldn't allow for a sealed letter anyway.
-    for (final letter in (await _user(uid).collection('letters').get()).docs) {
+    for (final letter in (await list('letters')).docs) {
       refs
         ..add(letter.reference.collection('content').doc('body'))
         ..add(letter.reference);
@@ -56,18 +75,18 @@ class AccountService {
       for (final ref in refs.skip(i).take(_batchSize)) {
         batch.delete(ref);
       }
-      await batch.commit();
+      await _confirmed(batch.commit());
     }
 
     // Last, and together: the rules only let the stamp wallet go in the same
     // write as the profile (or it could be deleted and refilled at will).
     // Keeping the profile to the end also means that if anything above
     // fails, the account still works and deleting can be tried again.
-    await (_firestore.batch()
+    await _confirmed((_firestore.batch()
           ..delete(_user(uid).collection('stamps').doc('wallet'))
           ..delete(_firestore.collection('handles').doc(handle))
           ..delete(_user(uid)))
-        .commit();
+        .commit());
 
     await _auth.deleteCurrentUser();
   }

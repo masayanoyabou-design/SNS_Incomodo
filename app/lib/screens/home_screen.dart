@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -156,23 +158,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           '確認のため、次にGoogleでもう一度ログインしてください。',
       confirmLabel: '削除する',
     );
-    if (!ok) return;
+    if (!ok || !mounted) return;
+
+    // Once the profile is gone, the app swaps this screen for profile setup
+    // while the sign-in account is still being removed. A dialog on the root
+    // navigator outlives that swap and keeps anything from being tapped.
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    final service = ref.read(accountServiceProvider);
+    unawaited(showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Expanded(child: Text('アカウントを削除しています…')),
+            ],
+          ),
+        ),
+      ),
+    ));
 
     setState(() => _busy = true);
     try {
-      await ref
-          .read(accountServiceProvider)
-          .deleteAccount(uid: profile.uid, handle: profile.handle);
+      await service.deleteAccount(uid: profile.uid, handle: profile.handle);
+      navigator.pop();
       // Signed out now: the app goes back to the sign-in screen by itself.
     } catch (e) {
+      navigator.pop();
       debugPrint('Deleting the account failed: $e');
-      _showMessage(switch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(switch (e) {
         FirebaseAuthException(code: 'user-mismatch') =>
           'ログイン中とは別のGoogleアカウントが選ばれました。削除は行っていません',
         GoogleSignInException(code: GoogleSignInExceptionCode.canceled) =>
           'ログインが取り消されたため、削除は行っていません',
+        SlowResponseException(:final message) => message,
         _ => '削除できませんでした。電波の良い場所で、もう一度お試しください（$e）',
-      });
+      })));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

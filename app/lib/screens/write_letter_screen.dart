@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -75,7 +76,12 @@ class _WriteLetterScreenState extends ConsumerState<WriteLetterScreen> {
       _showMessage(e.message);
     } catch (e) {
       debugPrint('Sending a letter failed: $e');
-      _showMessage('送れませんでした: $e');
+      // Refused by the rules: out of stamps, or the other person no longer
+      // accepts letters from us (unfriended, blocked, account deleted).
+      // Which one isn't said — a block is the blocker's to keep private.
+      _showMessage(e is FirebaseException && e.code == 'permission-denied'
+          ? '送れませんでした。相手が手紙を受け取れる状態ではないか、切手が足りません'
+          : '送れませんでした: $e');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
