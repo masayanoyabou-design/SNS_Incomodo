@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../firebase_emulators.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/postmark.dart';
 
@@ -15,13 +16,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isSigningIn = false;
   String? _errorMessage;
 
-  Future<void> _handleGoogleSignIn() async {
+  Future<void> _handleGoogleSignIn() =>
+      _signIn(() => ref.read(authServiceProvider).signInWithGoogle());
+
+  Future<void> _signIn(Future<void> Function() signIn) async {
     setState(() {
       _isSigningIn = true;
       _errorMessage = null;
     });
     try {
-      await ref.read(authServiceProvider).signInWithGoogle();
+      await signIn();
     } catch (e) {
       setState(() => _errorMessage = 'ログインに失敗しました: $e');
     } finally {
@@ -73,6 +77,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 ),
+              // Two people are needed to try letters; the emulators make up
+              // as many as asked for, no passwords involved (MANUAL 42).
+              if (useEmulators && !_isSigningIn)
+                for (final name in ['alice', 'bob'])
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: OutlinedButton(
+                      onPressed: () => _signIn(() => ref
+                          .read(authServiceProvider)
+                          .signInAsTestUser(name)),
+                      child: Text('テスト用：$nameでログイン'),
+                    ),
+                  ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 16),
                 Text(

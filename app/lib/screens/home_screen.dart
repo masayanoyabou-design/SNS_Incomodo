@@ -197,7 +197,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ..showSnackBar(SnackBar(content: Text(switch (e) {
         FirebaseAuthException(code: 'user-mismatch') =>
           'ログイン中とは別のGoogleアカウントが選ばれました。削除は行っていません',
-        GoogleSignInException(code: GoogleSignInExceptionCode.canceled) =>
+        FirebaseAuthException(code: 'popup-closed-by-user') ||
+            GoogleSignInException(code: GoogleSignInExceptionCode.canceled) =>
           'ログインが取り消されたため、削除は行っていません',
         SlowResponseException(:final message) => message,
         _ => '削除できませんでした。電波の良い場所で、もう一度お試しください（$e）',

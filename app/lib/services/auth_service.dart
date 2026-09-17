@@ -1,10 +1,18 @@
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+import '../firebase_emulators.dart';
 
 /// Wraps Firebase Authentication and Google Sign-In.
 ///
 /// This is the only place in the app that talks to these SDKs directly;
 /// everything else goes through [authStateChanges] or the methods below.
+///
+/// On the web (a development build only, MANUAL 42) Google sign-in is a
+/// Firebase popup instead: the google_sign_in package's flow is for phones.
 class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   bool _googleSignInInitialized = false;
@@ -25,35 +33,67 @@ class AuthService {
     _googleSignInInitialized = true;
   }
 
-  Future<UserCredential> signInWithGoogle() async {
+  Future<AuthCredential> _googleCredential() async {
     await _ensureGoogleSignInInitialized();
     final GoogleSignInAccount account = await _googleSignIn.authenticate();
-    final String? idToken = account.authentication.idToken;
-    final credential = GoogleAuthProvider.credential(idToken: idToken);
-    return FirebaseAuth.instance.signInWithCredential(credential);
+    return GoogleAuthProvider.credential(
+        idToken: account.authentication.idToken);
   }
+
+  Future<UserCredential> signInWithGoogle() async {
+    if (kIsWeb) {
+      return FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+    }
+    return FirebaseAuth.instance.signInWithCredential(await _googleCredential());
+  }
+
+  /// Signs in as a made-up Google user — only against the Auth emulator
+  /// (MANUAL 42), which accepts an unsigned token. The real service would
+  /// refuse it. Same [name], same user, so a test can come back as them.
+  Future<UserCredential> signInAsTestUser(String name) {
+    assert(useEmulators, 'Test users only exist on the emulators');
+    return FirebaseAuth.instance
+        .signInWithCredential(_testUserCredential('test-$name', name));
+  }
+
+  static AuthCredential _testUserCredential(String sub, String name) =>
+      GoogleAuthProvider.credential(
+        idToken: jsonEncode({
+          'sub': sub,
+          'email': '$name@example.com',
+          'email_verified': true,
+          'name': name,
+        }),
+      );
 
   /// Has the user sign in with Google again, for something Firebase only
   /// allows right after signing in — deleting the account.
   Future<void> reauthenticateWithGoogle() async {
     final user = currentUser;
     if (user == null) throw StateError('ログインしていません');
-    await _ensureGoogleSignInInitialized();
-    final account = await _googleSignIn.authenticate();
-    final credential =
-        GoogleAuthProvider.credential(idToken: account.authentication.idToken);
-    await user.reauthenticateWithCredential(credential);
+    if (useEmulators) {
+      final google =
+          user.providerData.firstWhere((p) => p.providerId == 'google.com');
+      await user.reauthenticateWithCredential(_testUserCredential(
+          google.uid!, (google.email ?? '').split('@').first));
+      return;
+    }
+    if (kIsWeb) {
+      await user.reauthenticateWithPopup(GoogleAuthProvider());
+      return;
+    }
+    await user.reauthenticateWithCredential(await _googleCredential());
   }
 
   /// Removes the Firebase account itself and signs out of Google, which
   /// takes the app back to the sign-in screen.
   Future<void> deleteCurrentUser() async {
     await currentUser?.delete();
-    await _googleSignIn.signOut();
+    if (!kIsWeb) await _googleSignIn.signOut();
   }
 
   Future<void> signOut() async {
     await FirebaseAuth.instance.signOut();
-    await _googleSignIn.signOut();
+    if (!kIsWeb) await _googleSignIn.signOut();
   }
 }
