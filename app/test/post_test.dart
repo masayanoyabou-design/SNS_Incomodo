@@ -49,6 +49,22 @@ void main() {
       expect(buildPost().remainingConstruction(now), Duration.zero);
     });
 
+    test('a first post stays ready even when the phone clock is behind', () {
+      // Seen on the emulator: the server stamps the post a moment after the
+      // phone last read its clock, which read as "0 minutes left".
+      final first = Post(
+        slot: PostSlot.home,
+        name: '自宅',
+        latitude: 35.6812,
+        longitude: 139.7671,
+        constructionStartedAt: startedAt,
+        firstPost: true,
+      );
+      final earlier = startedAt.subtract(const Duration(seconds: 30));
+      expect(first.isActive(earlier), isTrue);
+      expect(first.remainingConstruction(earlier), Duration.zero);
+    });
+
     test('the first post of an account needs no construction', () {
       final first = Post(
         slot: PostSlot.home,

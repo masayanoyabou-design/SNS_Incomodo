@@ -76,10 +76,14 @@ class Post {
       ? constructionStartedAt
       : constructionStartedAt.add(constructionPeriod);
 
-  bool isActive(DateTime now) => !now.isBefore(activatesAt);
+  /// A first post is active from the moment it exists. Comparing times
+  /// would briefly call it "under construction (0 min left)": the server's
+  /// timestamp can land a moment after the phone's own clock reading.
+  bool isActive(DateTime now) => firstPost || !now.isBefore(activatesAt);
 
   /// Time left until the post becomes active; zero once active.
   Duration remainingConstruction(DateTime now) {
+    if (firstPost) return Duration.zero;
     final remaining = activatesAt.difference(now);
     return remaining.isNegative ? Duration.zero : remaining;
   }
